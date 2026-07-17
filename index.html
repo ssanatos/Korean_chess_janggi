@@ -136,6 +136,8 @@
   }
   .btn.small{padding:8px 12px; font-size:13px;}
   .btn:disabled{opacity:0.5; cursor:not-allowed;}
+  .edit-tool-btn{padding:6px 10px; font-size:12px;}
+  .edit-tool-active{outline:2px solid var(--ink-gold); box-shadow:0 0 0 2px rgba(200,162,74,0.35);}
   #startBtnWrap{text-align:center; margin-top:22px;}
 
   /* ---------- 게임 화면 ---------- */
@@ -226,7 +228,16 @@
 <!-- ===================== 설정 화면 ===================== -->
 <div id="setupScreen">
   <div class="setup-block">
-    <h3><span class="side-dot cho"></span>초(楚) 배치 — 당신</h3>
+    <h3>플레이할 진영 선택</h3>
+    <div class="toggle-row">
+      <label><input type="radio" name="humanSideChoice" value="cho" checked> 초(楚) — 선공</label>
+      <label><input type="radio" name="humanSideChoice" value="han"> 한(漢) — 후공</label>
+    </div>
+    <p class="setup-hint">초가 항상 먼저 둡니다. 한을 고르면 AI가 첫 수를 먼저 둡니다.</p>
+  </div>
+
+  <div class="setup-block">
+    <h3><span class="side-dot cho"></span>초(楚) 배치 — <span id="choRoleLabel">당신</span></h3>
     <div class="toggle-row" data-side="cho" data-part="left">
       <label><input type="radio" name="choLeft" value="상마" checked> 좌: 상마</label>
       <label><input type="radio" name="choLeft" value="마상"> 좌: 마상</label>
@@ -238,7 +249,7 @@
   </div>
 
   <div class="setup-block">
-    <h3><span class="side-dot han"></span>한(漢) 배치 — AI</h3>
+    <h3><span class="side-dot han"></span>한(漢) 배치 — <span id="hanRoleLabel">AI</span></h3>
     <div class="toggle-row" data-side="han" data-part="left">
       <label><input type="radio" name="hanLeft" value="상마" checked> 좌: 상마</label>
       <label><input type="radio" name="hanLeft" value="마상"> 좌: 마상</label>
@@ -282,6 +293,47 @@
       <div id="engineLabel" style="font-size:11px; color:#8a7350; margin-top:2px;"></div>
       <div class="move-log" id="moveLog"></div>
     </div>
+    <div class="panel-box">
+      <h3 style="margin:0 0 10px; font-family:'Noto Serif KR', serif; font-size:14px; color:var(--ink-gold);">형세 판단</h3>
+      <div id="evalScoreRow" style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px;">
+        <span><span class="side-dot cho" style="display:inline-block; margin-right:4px;"></span>초 기물점수 <b id="choScoreText">0</b></span>
+        <span><span class="side-dot han" style="display:inline-block; margin-right:4px;"></span>한 기물점수 <b id="hanScoreText">0</b></span>
+      </div>
+      <div id="winProbBarWrap" style="height:14px; border-radius:7px; overflow:hidden; display:flex; border:1px solid #6b4726;">
+        <div id="winProbCho" style="background:var(--cho-green); width:50%; transition:width .3s;"></div>
+        <div id="winProbHan" style="background:var(--han-red); width:50%; transition:width .3s;"></div>
+      </div>
+      <div id="winProbText" style="font-size:12px; color:#c9b491; margin-top:6px; text-align:center;"></div>
+    </div>
+    <div class="panel-box">
+      <button class="btn secondary small" id="thinkViewBtn" style="width:100%;">AI 생각 보기 (5수)</button>
+      <p class="setup-hint" style="margin-top:8px;">지금 판을 기준으로 AI가 앞으로 둘 5수를 가볍게 미리 읽어, 기물이 움직일 궤적을 판 위에 빨간 선으로 겹쳐 보여줍니다. 상대의 유력한 응수 2가지에 대해 각각의 수순(변화 A / B)을 표시합니다. 실제 대국에 쓰이는 엔진과는 별개의 간이 분석입니다.</p>
+      <div id="thinkPanelText" style="font-size:12px; color:#c9b491; margin-top:8px; line-height:1.6;"></div>
+    </div>
+    <div class="panel-box">
+      <button class="btn secondary small" id="editBoardBtn" style="width:100%;">임의 배치</button>
+      <div id="editPanel" hidden style="margin-top:10px;">
+        <p class="setup-hint">기물을 고른 뒤 판의 칸을 눌러 놓으세요(이미 있는 기물 위도 덮어쓸 수 있어요). '지우기'를 고르고 칸을 누르면 기물을 치웁니다. 잡혀서 빠진 기물도 자유롭게 다시 놓을 수 있어요.</p>
+        <div style="margin-top:8px;">
+          <div style="font-size:12px; color:#8a7350; margin-bottom:4px;"><span class="side-dot cho" style="display:inline-block; margin-right:4px;"></span>초 기물</div>
+          <div id="editPaletteCho" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div style="font-size:12px; color:#8a7350; margin-bottom:4px;"><span class="side-dot han" style="display:inline-block; margin-right:4px;"></span>한 기물</div>
+          <div id="editPaletteHan" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
+        <button class="btn secondary small edit-tool-btn" id="editEraseBtn" style="width:100%; margin-top:8px;">지우기 도구</button>
+        <div class="toggle-row" style="margin-top:10px;">
+          <label><input type="radio" name="editNextTurn" value="cho" checked> 다음 차례: 초</label>
+          <label><input type="radio" name="editNextTurn" value="han"> 다음 차례: 한</label>
+        </div>
+        <div id="editWarnText" style="font-size:12px; color:#e2a25a; margin-top:6px;"></div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn small" id="editApplyBtn" style="flex:1;">적용하고 재개</button>
+          <button class="btn secondary small" id="editCancelBtn" style="flex:1;">취소</button>
+        </div>
+      </div>
+    </div>
     <div class="panel-box controls">
       <button class="btn secondary small" id="newGameBtn">새 게임</button>
     </div>
@@ -301,9 +353,16 @@
      외부 파일 없이 완전한 단일 HTML 파일이 됩니다. -->
 <script id="ssanatos-inline-slot">
 // ssanatos-engine.js
-// 장기(Janggi) 탐색 엔진 - 순수 JavaScript 구현
+// 장기(Janggi) 탐색 엔진 - 순수 JavaScript 구현 (v2: 고급 탐색 기법 적용)
 // C++ search.cpp 의 알고리즘을 그대로 포팅 (emscripten / WASM 빌드 불필요)
 // window.SsanatosEngine 으로 노출 → Emscripten MODULARIZE=1 출력과 동일한 인터페이스
+//
+// v2 개선 사항 (Fairy-Stockfish 등 현대 엔진의 표준 기법을 참고하여 자체 구현):
+//   - 킬러 무브 + 히스토리 휴리스틱 기반 수 정렬 (알파베타 컷 증가)
+//   - Null Move Pruning (탐색 속도 대폭 향상)
+//   - 기물 위치 테이블 PST (포지션 이해도 향상)
+//   - 퀴센스 서치 (지평선 효과로 인한 전술적 실수 감소)
+//   - LMR - Late Move Reduction (같은 시간에 더 깊은 탐색)
 (function () {
 "use strict";
 
@@ -313,6 +372,10 @@ const FILE_LEFT = 3, RANK_TOP = 3;
 const MAX_MV = 200;
 const INF = 9999999;
 const MSTRIDE = 5; // fx,fy,tx,ty,cap per move slot
+
+// 깊이 인덱스 버퍼 오프셋/길이. Null-move / LMR / 퀴센스 서치로 인해
+// depth 값이 원래 cutoff 범위를 넘나들 수 있으므로 넉넉하게 잡는다.
+const OFFSET = 40, BUF_LEN = 100;
 
 const PS = {
   NOTHING:0,
@@ -429,6 +492,56 @@ const SANG=[
 ];
 const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
 
+// ─── 기물 위치 테이블 (PST) ─────────────────────────────────────────────────
+// Fairy-Stockfish 등 현대 엔진들이 사용하는 "기물별 정적 위치 점수표" 개념을
+// 장기 규칙에 맞게 손수 설계했다 (실제 Fairy-Stockfish 수치는 네트워크 접근이
+// 없는 이 환경에서 가져올 수 없어 참고하지 못했으며, 대신 장기의 정석 전략 —
+// 병 전진, 궁 근접 차, 포 포진, 마/상 중앙 장악 — 을 반영해 직접 구성했다).
+// 테이블은 "한(HAN, 아래로 전진)" 기준으로 만들고, 초(CHO)는 y축을 뒤집어 재사용한다.
+const centerFile = x => 4 - Math.abs(x - 4);      // 0..4, 중앙(x=4)일수록 큼
+const edgePenalty = (x,y) => (x===0||x===8?1:0) + (y===0||y===9?1:0);
+
+function buildTable(fn){
+  const t = new Float32Array(H*W);
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++) t[y*W+x] = fn(x,y);
+  return t;
+}
+
+const PST_FWD = {
+  // 병(JOL): 전진할수록, 중앙 파일일수록 유리
+  JOL:  buildTable((x,y) => y*55 + centerFile(x)*12),
+  // 차(CHA): 중앙 파일 약간 선호 + 전진 약간 선호 (적 궁 근접 보너스는 _eval 에서 별도 처리)
+  CHA:  buildTable((x,y) => centerFile(x)*8 + Math.max(0, y-2)*6),
+  // 마(MA): 중앙일수록, 가장자리/모서리에서 벗어날수록 유리 (기동력)
+  MA:   buildTable((x,y) => centerFile(x)*26 - edgePenalty(x,y)*45),
+  // 상(SANG): 중앙 약간 선호, 모서리는 약한 페널티
+  SANG: buildTable((x,y) => centerFile(x)*14 - edgePenalty(x,y)*15),
+  // 포(PO): 중앙 파일 + 전진 약간 선호 (포다리 필요하므로 과도한 전진은 지양)
+  PO:   buildTable((x,y) => centerFile(x)*10 + Math.max(0, y-2)*4),
+  // 사(SA): 궁성 중앙(장 보호) 약간 선호
+  SA:   buildTable((x,y) => (x===4?10:0)),
+  // 장(JANG): 궁성 중앙에 머무는 것을 약간 선호
+  JANG: buildTable((x,y) => (x===4?15:0)),
+};
+
+// piece id → PST 종류 매핑
+const PST_KIND = {};
+PST_KIND[PS.CHO_JANG]=PST_FWD.JANG; PST_KIND[PS.HAN_JANG]=PST_FWD.JANG;
+PST_KIND[PS.CHO_SA]=PST_FWD.SA;     PST_KIND[PS.HAN_SA]=PST_FWD.SA;
+PST_KIND[PS.CHO_PO]=PST_FWD.PO;     PST_KIND[PS.HAN_PO]=PST_FWD.PO;
+PST_KIND[PS.CHO_JOL]=PST_FWD.JOL;   PST_KIND[PS.HAN_JOL]=PST_FWD.JOL;
+PST_KIND[PS.CHO_MA]=PST_FWD.MA;     PST_KIND[PS.HAN_MA]=PST_FWD.MA;
+PST_KIND[PS.CHO_SANG]=PST_FWD.SANG; PST_KIND[PS.HAN_SANG]=PST_FWD.SANG;
+PST_KIND[PS.CHO_CHA]=PST_FWD.CHA;   PST_KIND[PS.HAN_CHA]=PST_FWD.CHA;
+
+// ─── 오프닝 북 (정석) ───────────────────────────────────────────────────────
+// Fairy-Stockfish(sd22)가 16가지 초기 배치 조합(마상 좌우 4가지 x 4가지)을 서로 자가대국하며
+// 깊이 22로 분석한 실전 기보에서, 각 게임의 앞부분 20수(각 10수)를 추출해 만든 검증된 오프닝북.
+// 키는 이 파일의 Zobrist 해시(고정 RC4 시드라 항상 동일하게 재현됨)이며, 해당 위치에서 정석이 발견되면
+// 탐색 없이 즉시 응답한다 (초반 응답 속도 향상 + 이론적으로 더 튼튼한 오프닝).
+const OPENING_BOOK = {"-1878286751|1183257812":{"fx":8,"fy":6,"tx":7,"ty":6},"-1187696756|1115872446":{"fx":6,"fy":0,"tx":5,"ty":2},"1470651996|1037821713":{"fx":1,"fy":9,"tx":2,"ty":7},"-67877795|-565694925":{"fx":7,"fy":2,"tx":4,"ty":2},"1224436583|1262152586":{"fx":0,"fy":6,"tx":1,"ty":6},"716666666|933314013":{"fx":6,"fy":3,"tx":7,"ty":3},"517805779|-146513342":{"fx":8,"fy":9,"tx":8,"ty":5},"1978496081|-888718705":{"fx":1,"fy":0,"tx":2,"ty":2},"40790317|-1735012798":{"fx":4,"fy":8,"tx":4,"ty":9},"-1514572710|1734842780":{"fx":4,"fy":1,"tx":4,"ty":0},"-1415428185|-1908931561":{"fx":8,"fy":5,"tx":2,"ty":5},"-1558134008|-180871991":{"fx":4,"fy":3,"tx":3,"ty":3},"1571740431|792129423":{"fx":3,"fy":9,"tx":4,"ty":8},"-1566474574|1766861961":{"fx":5,"fy":0,"tx":4,"ty":1},"832386719|963745184":{"fx":1,"fy":7,"tx":1,"ty":5},"-778914977|1610932672":{"fx":1,"fy":2,"tx":3,"ty":2},"413911240|1420516778":{"fx":7,"fy":7,"tx":0,"ty":7},"299604724|-1372454516":{"fx":0,"fy":3,"tx":1,"ty":3},"576031077|1733670272":{"fx":2,"fy":9,"tx":0,"ty":6},"-1755782675|1599006449":{"fx":3,"fy":2,"tx":0,"ty":2},"-1367221700|385486378":{"fx":1,"fy":9,"tx":2,"ty":7},"48087101|-177617144":{"fx":1,"fy":0,"tx":2,"ty":2},"1969151297|-1493486651":{"fx":0,"fy":6,"tx":1,"ty":6},"387105036|-631183982":{"fx":7,"fy":0,"tx":6,"ty":2},"999141460|-136024077":{"fx":0,"fy":9,"tx":0,"ty":5},"-1813905345|-630649764":{"fx":4,"fy":1,"tx":4,"ty":0},"-1644612670|859214295":{"fx":7,"fy":9,"tx":5,"ty":6},"52709877|-2012654798":{"fx":7,"fy":2,"tx":4,"ty":2},"-1339332913|494638731":{"fx":4,"fy":8,"tx":4,"ty":9},"402422712|-494288555":{"fx":5,"fy":0,"tx":4,"ty":1},"-2067778667|-1297581956":{"fx":5,"fy":9,"tx":4,"ty":8},"318395960|122758579":{"fx":4,"fy":3,"tx":5,"ty":3},"1163840617|543655833":{"fx":1,"fy":7,"tx":4,"ty":7},"37310587|-1955691701":{"fx":6,"fy":2,"tx":4,"ty":3},"-1866756025|1343523689":{"fx":8,"fy":6,"tx":7,"ty":6},"-1182457430|1410417411":{"fx":1,"fy":2,"tx":3,"ty":2},"1891392061|1623129961":{"fx":4,"fy":7,"tx":0,"ty":7},"1646520566|2006648284":{"fx":3,"fy":2,"tx":5,"ty":0},"1198711015|-137048401":{"fx":6,"fy":9,"tx":5,"ty":7},"-1183449546|-253796485":{"fx":2,"fy":3,"tx":2,"ty":4},"1901149162|-1927378262":{"fx":1,"fy":9,"tx":2,"ty":7},"-586341909|1854751624":{"fx":6,"fy":0,"tx":5,"ty":2},"865095739|299137063":{"fx":1,"fy":7,"tx":4,"ty":7},"1962396713|-1159889675":{"fx":6,"fy":3,"tx":5,"ty":3},"-1582675520|1562145406":{"fx":8,"fy":6,"tx":7,"ty":6},"-2003503059|1494858260":{"fx":1,"fy":0,"tx":3,"ty":3},"-1677338028|1128949632":{"fx":6,"fy":9,"tx":5,"ty":7},"1644348549|1145173588":{"fx":0,"fy":3,"tx":1,"ty":3},"1368184596|-1926872488":{"fx":7,"fy":9,"tx":5,"ty":6},"-816730845|907641021":{"fx":4,"fy":1,"tx":4,"ty":0},"-1052074274|-549053130":{"fx":4,"fy":7,"tx":0,"ty":7},"-741004267|-932976765":{"fx":0,"fy":0,"tx":1,"ty":0},"-1289064574|2111873274":{"fx":5,"fy":6,"tx":3,"ty":3},"861114657|259940852":{"fx":2,"fy":3,"tx":3,"ty":3},"-1092667023|454758927":{"fx":4,"fy":6,"tx":4,"ty":5},"1512895012|-1229838064":{"fx":5,"fy":0,"tx":4,"ty":1},"-921650679|-426536903":{"fx":0,"fy":6,"tx":1,"ty":6},"-1419991484|-1710733714":{"fx":7,"fy":2,"tx":2,"ty":2},"-1145309457|1366926019":{"fx":2,"fy":7,"tx":4,"ty":6},"-1266698324|-1323078272":{"fx":5,"fy":3,"tx":5,"ty":4},"1339785143|-580677548":{"fx":6,"fy":9,"tx":5,"ty":7},"-1310957210|-630718080":{"fx":2,"fy":0,"tx":3,"ty":2},"76766864|-372186459":{"fx":0,"fy":6,"tx":1,"ty":6},"1725907677|-1790233358":{"fx":1,"fy":0,"tx":3,"ty":3},"1917739172|-1894192794":{"fx":7,"fy":9,"tx":5,"ty":6},"-325903725|874982275":{"fx":8,"fy":3,"tx":7,"ty":3},"1332309379|-1030229665":{"fx":5,"fy":6,"tx":7,"ty":3},"1967660896|1446991033":{"fx":6,"fy":3,"tx":7,"ty":3},"-1503765424|1009836282":{"fx":6,"fy":6,"tx":7,"ty":6},"-1147433110|271817901":{"fx":7,"fy":3,"tx":6,"ty":3},"-1879970157|-791231694":{"fx":7,"fy":7,"tx":4,"ty":7},"-711518534|1517577003":{"fx":1,"fy":2,"tx":4,"ty":2},"631237266|804798480":{"fx":8,"fy":9,"tx":6,"ty":9},"-2087000597|1050136564":{"fx":4,"fy":3,"tx":5,"ty":3},"-734101574|430009822":{"fx":1,"fy":9,"tx":2,"ty":7},"2019714491|-97344260":{"fx":3,"fy":3,"tx":1,"ty":6},"1233652922|412531042":{"fx":4,"fy":6,"tx":3,"ty":6},"1317782372|-1169564611":{"fx":6,"fy":0,"tx":4,"ty":3},"91823477|1238782566":{"fx":2,"fy":6,"tx":1,"ty":6},"-544573875|1429403920":{"fx":2,"fy":3,"tx":1,"ty":3},"1303030131|-462621963":{"fx":1,"fy":9,"tx":2,"ty":7},"-503925902|134167511":{"fx":6,"fy":0,"tx":5,"ty":2},"258720418|2024145016":{"fx":1,"fy":7,"tx":4,"ty":7},"1208770224|-743504726":{"fx":1,"fy":0,"tx":2,"ty":2},"1066353612|-2143424409":{"fx":0,"fy":6,"tx":1,"ty":6},"1573085057|-56220112":{"fx":8,"fy":3,"tx":7,"ty":3},"-29808495|169278700":{"fx":7,"fy":9,"tx":6,"ty":7},"522059349|-834618854":{"fx":8,"fy":0,"tx":8,"ty":4},"-1174856220|-694977416":{"fx":7,"fy":7,"tx":5,"ty":7},"-1453526474|-1917978452":{"fx":3,"fy":0,"tx":3,"ty":1},"-821906259|-93005900":{"fx":4,"fy":8,"tx":4,"ty":9},"1758833114|92700778":{"fx":4,"fy":1,"tx":4,"ty":0},"1724815911|-321315359":{"fx":8,"fy":6,"tx":8,"ty":5},"-585688102|-1896398198":{"fx":8,"fy":4,"tx":8,"ty":1},"-163437424|-949024029":{"fx":5,"fy":9,"tx":4,"ty":8},"1618493757|1922455340":{"fx":7,"fy":2,"tx":4,"ty":2},"-747147769|-404450667":{"fx":4,"fy":6,"tx":5,"ty":6},"-1033163114|-1141100572":{"fx":1,"fy":2,"tx":3,"ty":2},"189945089|-1890348146":{"fx":8,"fy":9,"tx":8,"ty":6},"-609647551|-800676058":{"fx":3,"fy":2,"tx":0,"ty":2},"1931537710|-1273894901":{"fx":8,"fy":6,"tx":7,"ty":6},"1511939267|-1340858271":{"fx":7,"fy":0,"tx":6,"ty":2},"1988177307|-1651463680":{"fx":7,"fy":9,"tx":6,"ty":7},"-1750729889|1506209014":{"fx":0,"fy":3,"tx":1,"ty":3},"-1540626226|-1868474118":{"fx":1,"fy":9,"tx":2,"ty":7},"142078671|1932693976":{"fx":1,"fy":0,"tx":2,"ty":2},"2146758579|547382549":{"fx":7,"fy":7,"tx":4,"ty":7},"630331290|-1442659060":{"fx":4,"fy":1,"tx":4,"ty":0},"730408039|1130190983":{"fx":4,"fy":8,"tx":4,"ty":9},"-1939982064|-1129377959":{"fx":7,"fy":2,"tx":4,"ty":2},"1062278698|702401248":{"fx":5,"fy":9,"tx":4,"ty":8},"-1452575865|-1675323601":{"fx":4,"fy":2,"tx":8,"ty":2},"-1199478540|843145061":{"fx":8,"fy":9,"tx":7,"ty":9},"1262185769|-1305081760":{"fx":8,"fy":3,"tx":7,"ty":3},"-389998023|1149686460":{"fx":3,"fy":9,"tx":3,"ty":8},"791396935|-1813741277":{"fx":3,"fy":0,"tx":4,"ty":1},"-14045260|-1593632053":{"fx":1,"fy":7,"tx":3,"ty":7},"-884625882|521515284":{"fx":1,"fy":2,"tx":3,"ty":2},"41735601|733613438":{"fx":6,"fy":9,"tx":8,"ty":6},"98129746|-1846159355":{"fx":8,"fy":2,"tx":4,"ty":2},"-1393554184|804613259":{"fx":1,"fy":9,"tx":2,"ty":7},"11278073|-865688151":{"fx":6,"fy":0,"tx":5,"ty":2},"-298752215|-1287676410":{"fx":8,"fy":6,"tx":7,"ty":6},"-955263292|-1220913556":{"fx":2,"fy":0,"tx":3,"ty":2},"1916856626|-2071808695":{"fx":1,"fy":7,"tx":4,"ty":7},"891778336|797684123":{"fx":2,"fy":3,"tx":3,"ty":3},"574076403|2024243581":{"fx":0,"fy":6,"tx":1,"ty":6},"1081846206|71063338":{"fx":1,"fy":2,"tx":4,"ty":2},"-1334618730|1907389457":{"fx":7,"fy":9,"tx":6,"ty":7},"1364689746|-1243204889":{"fx":6,"fy":3,"tx":7,"ty":3},"1698554539|1963158904":{"fx":8,"fy":9,"tx":8,"ty":5},"235765801|1228944821":{"fx":7,"fy":0,"tx":5,"ty":3},"-2066870972|1489625757":{"fx":8,"fy":5,"tx":6,"ty":5},"-996290339|1420006359":{"fx":4,"fy":1,"tx":4,"ty":0},"-897129696|-1107554724":{"fx":0,"fy":9,"tx":0,"ty":5},"1659458379|-1871614477":{"fx":0,"fy":0,"tx":0,"ty":2},"315655757|-433348301":{"fx":4,"fy":6,"tx":5,"ty":6},"63751900|-1171055550":{"fx":3,"fy":2,"tx":1,"ty":3},"1058869725|2002737840":{"fx":0,"fy":5,"tx":3,"ty":5},"224977187|-2063450445":{"fx":3,"fy":0,"tx":4,"ty":1},"-1837479771|2139649653":{"fx":7,"fy":9,"tx":6,"ty":7},"1935580769|-1143066493":{"fx":7,"fy":0,"tx":6,"ty":2},"1606545209|-1772438814":{"fx":1,"fy":9,"tx":2,"ty":7},"-207751880|1976136640":{"fx":4,"fy":1,"tx":4,"ty":0},"-41498939|-1667830197":{"fx":8,"fy":6,"tx":7,"ty":6},"-726108376|-1735186911":{"fx":3,"fy":0,"tx":4,"ty":1},"79305435|-1435189815":{"fx":0,"fy":6,"tx":1,"ty":6},"1727399574|-688952418":{"fx":2,"fy":0,"tx":3,"ty":2},"-742835872|-447248197":{"fx":4,"fy":6,"tx":3,"ty":6},"-725944642|1200156132":{"fx":2,"fy":3,"tx":1,"ty":3},"-1097809915|1935850692":{"fx":8,"fy":9,"tx":8,"ty":5},"-710892921|1327621129":{"fx":1,"fy":2,"tx":1,"ty":4},"-1161104721|545821708":{"fx":1,"fy":6,"tx":1,"ty":5},"-431562929|1914154186":{"fx":1,"fy":4,"tx":1,"ty":1},"885724320|-260514684":{"fx":2,"fy":9,"tx":4,"ty":6},"1945290105|1020891351":{"fx":6,"fy":3,"tx":6,"ty":4},"-80518000|-305088644":{"fx":7,"fy":7,"tx":3,"ty":7},"-765591239|1919793256":{"fx":1,"fy":0,"tx":4,"ty":2},"1771744844|374772228":{"fx":8,"fy":5,"tx":7,"ty":5},"1445918889|1608922028":{"fx":4,"fy":2,"tx":7,"ty":4},"212529200|1260368562":{"fx":8,"fy":6,"tx":7,"ty":6},"630473181|1327135448":{"fx":1,"fy":0,"tx":2,"ty":2},"1377262753|478711317":{"fx":2,"fy":9,"tx":3,"ty":7},"-1550217064|-1608635036":{"fx":0,"fy":3,"tx":1,"ty":3},"-1877507319|1769576808":{"fx":1,"fy":7,"tx":4,"ty":7},"-680517861|-1032806982":{"fx":1,"fy":2,"tx":4,"ty":2},"662233907|-1208172927":{"fx":4,"fy":6,"tx":4,"ty":5},"-1014290330|441812382":{"fx":6,"fy":0,"tx":5,"ty":2},"756439478|1695333937":{"fx":6,"fy":9,"tx":5,"ty":7},"-753842329|1644638181":{"fx":4,"fy":1,"tx":4,"ty":0},"-586517350|-1957121426":{"fx":7,"fy":7,"tx":7,"ty":5},"-1956326603|1274734746":{"fx":3,"fy":0,"tx":4,"ty":1},"1533460166|2031973234":{"fx":7,"fy":5,"tx":2,"ty":5},"-789894593|-661574967":{"fx":0,"fy":0,"tx":0,"ty":2},"-1596784839|-1362369015":{"fx":1,"fy":9,"tx":3,"ty":6},"-110298276|953768398":{"fx":4,"fy":3,"tx":4,"ty":4},"-1660497472|-1443488378":{"fx":3,"fy":6,"tx":1,"ty":3},"-1677812712|-348233387":{"fx":7,"fy":0,"tx":5,"ty":3},"289214837|-88623491":{"fx":2,"fy":5,"tx":2,"ty":8},"-1366228796|1591002855":{"fx":4,"fy":4,"tx":4,"ty":5},"841004141|459450444":{"fx":4,"fy":6,"tx":4,"ty":5},"-690782408|-1228172461":{"fx":7,"fy":0,"tx":6,"ty":2},"-95678880|-1689315022":{"fx":6,"fy":9,"tx":5,"ty":7},"72028337|-1673230106":{"fx":1,"fy":0,"tx":2,"ty":2},"1942490573|-808027093":{"fx":2,"fy":9,"tx":3,"ty":7},"-2109292044|1933631322":{"fx":7,"fy":2,"tx":5,"ty":2},"-1988423833|-444113949":{"fx":1,"fy":7,"tx":4,"ty":7},"-836988043|1317953329":{"fx":8,"fy":0,"tx":8,"ty":1},"35936080|2027673520":{"fx":7,"fy":9,"tx":5,"ty":6},"-1661391513|-1008462507":{"fx":1,"fy":2,"tx":4,"ty":2},"1827787087|-1234684306":{"fx":8,"fy":6,"tx":7,"ty":6},"1171218594|-1301414396":{"fx":0,"fy":3,"tx":1,"ty":3},"1984000819|2064271880":{"fx":7,"fy":7,"tx":7,"ty":5},"540005532|-1146613508":{"fx":4,"fy":1,"tx":4,"ty":0},"775219041|1391955319":{"fx":7,"fy":5,"tx":2,"ty":5},"-1514572904|-209988404":{"fx":0,"fy":0,"tx":0,"ty":2},"-712989026|-2061428724":{"fx":0,"fy":9,"tx":0,"ty":7},"-1195391356|-1531945040":{"fx":8,"fy":1,"tx":0,"ty":1},"1630315063|1008840605":{"fx":2,"fy":6,"tx":1,"ty":6},"-501800179|1393133767":{"fx":6,"fy":3,"tx":6,"ty":4},"-303016517|-2138690356":{"fx":6,"fy":9,"tx":5,"ty":7},"334973802|-2020754152":{"fx":2,"fy":0,"tx":3,"ty":2},"-1497860964|-1271570883":{"fx":7,"fy":7,"tx":4,"ty":7},"-52523851|1050148388":{"fx":4,"fy":3,"tx":4,"ty":4},"-1732991447|-1346848148":{"fx":8,"fy":6,"tx":7,"ty":6},"-1316350012|-1413647866":{"fx":0,"fy":3,"tx":1,"ty":3},"-2113665963|1658504714":{"fx":4,"fy":6,"tx":4,"ty":5},"1727516416|-814482155":{"fx":1,"fy":2,"tx":4,"ty":2},"-1761660120|-1157636562":{"fx":0,"fy":9,"tx":0,"ty":8},"727437907|-1308794504":{"fx":6,"fy":0,"tx":5,"ty":2},"-976837757|-828089641":{"fx":2,"fy":6,"tx":1,"ty":6},"1190994617|-1584628339":{"fx":1,"fy":0,"tx":3,"ty":3},"1382809792|-1142972391":{"fx":2,"fy":9,"tx":3,"ty":7},"-1545417479|122225512":{"fx":3,"fy":3,"tx":1,"ty":6},"-1844926984|-437444874":{"fx":3,"fy":7,"tx":1,"ty":6},"-259765683|-1750477878":{"fx":4,"fy":1,"tx":4,"ty":0},"-23103056|2130071105":{"fx":1,"fy":7,"tx":1,"ty":5},"512818288|662911521":{"fx":4,"fy":4,"tx":4,"ty":5},"607989489|1006701833":{"fx":5,"fy":7,"tx":4,"ty":5},"1568113779|1638524511":{"fx":3,"fy":0,"tx":4,"ty":1},"-746974746|-788842958":{"fx":0,"fy":6,"tx":1,"ty":6},"-1321857621|-1402937243":{"fx":2,"fy":0,"tx":3,"ty":2},"75051613|-1613233344":{"fx":6,"fy":9,"tx":5,"ty":7},"-92394356|-1730964844":{"fx":1,"fy":2,"tx":4,"ty":2},"175558820|-312495697":{"fx":4,"fy":6,"tx":4,"ty":5},"-293266447|1089899184":{"fx":7,"fy":0,"tx":6,"ty":2},"-1038456151|1836187857":{"fx":2,"fy":9,"tx":3,"ty":7},"865379984|-773545056":{"fx":8,"fy":3,"tx":7,"ty":3},"-1871785600|659847548":{"fx":7,"fy":9,"tx":5,"ty":6},"246655927|-1670661223":{"fx":7,"fy":2,"tx":5,"ty":2},"93218084|179060512":{"fx":5,"fy":9,"tx":5,"ty":8},"-1628037349|-24191023":{"fx":4,"fy":3,"tx":4,"ty":4},"-90425977|1872862105":{"fx":1,"fy":7,"tx":4,"ty":7},"-1107580523|-995582133":{"fx":6,"fy":3,"tx":6,"ty":4},"892995708|362920160":{"fx":6,"fy":6,"tx":6,"ty":5},"452063653|2007219457":{"fx":7,"fy":3,"tx":7,"ty":4},"449176922|2016554632":{"fx":6,"fy":5,"tx":6,"ty":4},"752497266|891721865":{"fx":7,"fy":4,"tx":6,"ty":4},"-1509575863|-2076395307":{"fx":4,"fy":8,"tx":3,"ty":8},"1766289110|1872933852":{"fx":4,"fy":1,"tx":4,"ty":0},"-787757278|-369863533":{"fx":8,"fy":6,"tx":7,"ty":6},"-130713905|-302932743":{"fx":6,"fy":0,"tx":5,"ty":2},"380110623|-1834440874":{"fx":1,"fy":9,"tx":3,"ty":6},"1326842746|79304849":{"fx":0,"fy":3,"tx":1,"ty":3},"2090340587|-841110371":{"fx":2,"fy":9,"tx":3,"ty":7},"-1927881518|1900744684":{"fx":7,"fy":0,"tx":5,"ty":3},"131420607|1623382212":{"fx":1,"fy":7,"tx":4,"ty":7},"1085459885|-875832298":{"fx":1,"fy":0,"tx":2,"ty":2},"926011601|-1738987301":{"fx":4,"fy":6,"tx":5,"ty":6},"640520256|-1002334806":{"fx":7,"fy":2,"tx":4,"ty":2},"-1792884870|1362317331":{"fx":6,"fy":9,"tx":4,"ty":6},"1036928837|-1515645680":{"fx":5,"fy":3,"tx":3,"ty":6},"-1324259330|-619776688":{"fx":4,"fy":6,"tx":6,"ty":3},"-989620546|628246548":{"fx":8,"fy":0,"tx":8,"ty":2},"-665949108|291144883":{"fx":2,"fy":6,"tx":3,"ty":6},"1299604465|1225508948":{"fx":5,"fy":2,"tx":4,"ty":4},"-1205121095|1645346671":{"fx":6,"fy":3,"tx":4,"ty":6},"-1351166777|-68475325":{"fx":4,"fy":4,"tx":3,"ty":6},"737521857|1925564018":{"fx":7,"fy":9,"tx":6,"ty":7},"-892246523|-1231847292":{"fx":1,"fy":2,"tx":3,"ty":2},"-276724865|-1182183827":{"fx":7,"fy":9,"tx":6,"ty":7},"245716411|2111768731":{"fx":7,"fy":0,"tx":6,"ty":2},"574235875|1348174586":{"fx":8,"fy":6,"tx":7,"ty":6},"184849678|1415465616":{"fx":7,"fy":2,"tx":4,"ty":2},"-1207190988|-1054044375":{"fx":4,"fy":8,"tx":4,"ty":9},"534554435|1054791927":{"fx":1,"fy":0,"tx":2,"ty":2},"1751104063|1833708602":{"fx":0,"fy":6,"tx":1,"ty":6},"169059954|299367021":{"fx":4,"fy":2,"tx":8,"ty":2},"469351681|-1078840793":{"fx":8,"fy":9,"tx":7,"ty":9},"-398214948|1069901090":{"fx":4,"fy":3,"tx":3,"ty":3},"382574811|-439642524":{"fx":5,"fy":9,"tx":4,"ty":8},"-2131245706|1345506219":{"fx":8,"fy":3,"tx":7,"ty":3},"588100198|-1501425289":{"fx":0,"fy":9,"tx":0,"ty":5},"-1956511219|-1961921832":{"fx":8,"fy":2,"tx":4,"ty":2},"-1702356610|627751570":{"fx":7,"fy":7,"tx":2,"ty":7},"1500955576|879506997":{"fx":1,"fy":2,"tx":3,"ty":2},"-1873823697|12814943":{"fx":2,"fy":6,"tx":3,"ty":6},"1911678439|274010627":{"fx":0,"fy":0,"tx":0,"ty":2},"29896929|1712316099":{"fx":6,"fy":9,"tx":8,"ty":6},"107852290|-599782472":{"fx":8,"fy":0,"tx":8,"ty":1},"810640041|577620717":{"fx":7,"fy":9,"tx":6,"ty":7},"-780815251|-432305125":{"fx":2,"fy":0,"tx":3,"ty":2},"1681558427|-712806594":{"fx":7,"fy":7,"tx":4,"ty":7},"1046246322|1596051239":{"fx":2,"fy":3,"tx":3,"ty":3},"692892513|135135169":{"fx":2,"fy":9,"tx":3,"ty":7},"-658342056|-1264886608":{"fx":8,"fy":0,"tx":8,"ty":1},"351976317|-2100374479":{"fx":8,"fy":6,"tx":7,"ty":6},"1036257936|-2033509285":{"fx":7,"fy":0,"tx":5,"ty":3},"-1224243203|-1757230221":{"fx":1,"fy":9,"tx":3,"ty":6},"-289832040|22049972":{"fx":8,"fy":3,"tx":7,"ty":3},"1296299144|-136270232":{"fx":8,"fy":9,"tx":8,"ty":1},"-788565661|-454146522":{"fx":6,"fy":0,"tx":8,"ty":1},"-1315968058|1061600296":{"fx":3,"fy":6,"tx":5,"ty":3},"966981320|1290782262":{"fx":6,"fy":3,"tx":5,"ty":3},"-1668604703|-286816680":{"fx":4,"fy":6,"tx":5,"ty":6},"-1919460240|-1291896023":{"fx":1,"fy":2,"tx":4,"ty":2},"2107613272|-948758510":{"fx":0,"fy":6,"tx":1,"ty":6},"533969941|-1142370747":{"fx":4,"fy":1,"tx":4,"ty":0},"298356712|1387746254":{"fx":6,"fy":9,"tx":4,"ty":6},"-1188792361|-1506994483":{"fx":3,"fy":3,"tx":3,"ty":4},"249243380|1913704467":{"fx":0,"fy":6,"tx":1,"ty":6},"1821850297|243992132":{"fx":2,"fy":0,"tx":3,"ty":2},"-640154289|1026811233":{"fx":8,"fy":6,"tx":7,"ty":6},"-253315934|959851787":{"fx":7,"fy":0,"tx":6,"ty":2},"-595999238|347252586":{"fx":7,"fy":9,"tx":6,"ty":7},"1029509950|-790306404":{"fx":1,"fy":2,"tx":4,"ty":2},"-850006250|-1519861081":{"fx":1,"fy":9,"tx":3,"ty":6},"-1796478093|863665504":{"fx":4,"fy":1,"tx":4,"ty":0},"-1695491954|-635051797":{"fx":7,"fy":7,"tx":4,"ty":7},"-1063903065|1351041266":{"fx":2,"fy":3,"tx":2,"ty":4},"704370773|-1001170148":{"fx":8,"fy":9,"tx":8,"ty":5},"1120647895|-133168175":{"fx":1,"fy":0,"tx":3,"ty":3},"1448777902|-498868667":{"fx":2,"fy":9,"tx":3,"ty":7},"-1479256937|1591049524":{"fx":0,"fy":0,"tx":0,"ty":1},"1907455188|-53330907":{"fx":4,"fy":6,"tx":5,"ty":6},"1621963845|-1597341356":{"fx":2,"fy":4,"tx":3,"ty":4},"593846277|-2095825502":{"fx":6,"fy":9,"tx":4,"ty":6},"-1953916870|2005825697":{"fx":6,"fy":3,"tx":6,"ty":4},"55065043|-1501077750":{"fx":8,"fy":5,"tx":2,"ty":5},"197836156|-578336812":{"fx":7,"fy":2,"tx":7,"ty":7}};
+
+
 // ─── Search 클래스 ───────────────────────────────────────────────────────────
 class Search {
   constructor(){
@@ -442,12 +555,23 @@ class Search {
     this.isMax=false;
 
     // 후보 수 버퍼 (탐색 중 재사용, 깊이별로 분리)
-    // mvBuf[depth+14]: Int32Array[MAX_MV*MSTRIDE]
-    this._bufs=Array.from({length:30},()=>new Int32Array(MAX_MV*MSTRIDE));
-    this._nBuf=new Int32Array(30);
+    // mvBuf[depth+OFFSET]: Int32Array[MAX_MV*MSTRIDE]
+    this._bufs=Array.from({length:BUF_LEN},()=>new Int32Array(MAX_MV*MSTRIDE));
+    this._nBuf=new Int32Array(BUF_LEN);
     // 루트 탐색 임시 버퍼
     this._tmp=new Int32Array(MAX_MV*MSTRIDE);
     this._tmpN=0;
+    // 체크 판정 / 스코어 캐시용 버퍼
+    this._checkBuf=new Int32Array(MAX_MV*MSTRIDE);
+    this._scores=new Int32Array(MAX_MV);
+
+    // 퀴센스 서치 전용 버퍼 (메인 탐색 깊이 인덱스와 겹치지 않도록 별도 관리)
+    this.qMaxDepth=6;
+    this._qBufs=Array.from({length:this.qMaxDepth+2},()=>new Int32Array(MAX_MV*MSTRIDE));
+
+    // 킬러 무브 (깊이별 2개) + 히스토리 휴리스틱 테이블
+    this.killers=Array.from({length:BUF_LEN},()=>[0,0]);
+    this.history=new Int32Array(2*65536); // [side-1]*65536 + fromSq*256 + toSq
 
     this.cutoff=3; this.feedover=8;
     this.entryLim=4000; this.maxLim=8000;
@@ -518,6 +642,19 @@ class Search {
     this.isMax=(side===SD.HAN);
     this.side=side;
 
+    // 오프닝 북 조회: 지금 위치가 정석 기보에 있으면 탐색 없이 즉시 반환한다.
+    // (동형반복(repeatmv) 회피가 필요한 경우에만 북을 건너뛰고 정상 탐색으로 진행)
+    if(this.useBook!==false){
+      const bookMv=OPENING_BOOK[this.zk+'|'+this.zl];
+      if(bookMv){
+        const mv=MAKE_MV(MAKE_SQ(bookMv.fx,bookMv.fy),MAKE_SQ(bookMv.tx,bookMv.ty));
+        if(mv!==repeatmv && this.isLegalMove(bookMv.fx,bookMv.fy,bookMv.tx,bookMv.ty)>0) return mv;
+      }
+    }
+
+    // 매 탐색 시작 시 킬러/히스토리 테이블 리셋(킬러) / 감쇠(히스토리)
+    this._resetSearchTables();
+
     // 루트 후보 수 생성
     const n=this._genAll(this._tmp,0);
     if(n===0) return 0;
@@ -557,7 +694,7 @@ class Search {
       const fx=rootBuf[base],fy=rootBuf[base+1],tx=rootBuf[base+2],ty=rootBuf[base+3],cap=rootBuf[base+4];
       this._apply(fx,fy,tx,ty,cap);
       this._flip();
-      const v=this.isMax ? this._minV(a,bv,d) : this._maxV(a,bv,d);
+      const v=this.isMax ? this._minV(a,bv,d,true) : this._maxV(a,bv,d,true);
       this._flip();
       this._undo(fx,fy,tx,ty,cap);
       return v;
@@ -646,7 +783,7 @@ class Search {
   }
 
   getScore(){ return 0; }
-  getVersion(){ return 14; }
+  getVersion(){ return 20; }
 
   // ── 내부: 보드 ────────────────────────────────────────────────────────────
   _place(x,y,p,del){
@@ -819,15 +956,48 @@ class Search {
     return this._tmpN;
   }
 
+  // ── 내부: 장군(체크) 판정 / 잔여 비폰 기물 판정 (Null Move 안전장치) ─────
+  _generalSquare(side){
+    const target = side===SD.CHO?PS.CHO_JANG:PS.HAN_JANG;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(this.b[y*W+x]===target) return {x,y};
+    return null;
+  }
+
+  _isInCheck(side){
+    const g=this._generalSquare(side);
+    if(!g) return false;
+    const opp = side===SD.CHO?SD.HAN:SD.CHO;
+    const saveSide=this.side, saveTmp=this._tmp, saveTmpN=this._tmpN;
+    this.side=opp; this._tmp=this._checkBuf; this._tmpN=0;
+    const n=this._genAll(this._tmp,0);
+    let inCheck=false;
+    for(let i=0;i<n;i++){
+      const base=i*MSTRIDE;
+      if(this._tmp[base+2]===g.x&&this._tmp[base+3]===g.y){ inCheck=true; break; }
+    }
+    this.side=saveSide; this._tmp=saveTmp; this._tmpN=saveTmpN;
+    return inCheck;
+  }
+
+  _hasNonPawnMaterial(side){
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const p=this.b[y*W+x]; if(!p) continue;
+      const s=p<PS.BOUNDARY?SD.CHO:SD.HAN;
+      if(s!==side) continue;
+      if(p===PS.CHO_JOL||p===PS.HAN_JOL||p===PS.CHO_SA||p===PS.HAN_SA||
+         p===PS.CHO_JANG||p===PS.HAN_JANG) continue;
+      return true;
+    }
+    return false;
+  }
+
   // ── 내부: 수순 정렬 ─────────────────────────────────────────────────────
   _scoreRoot(buf,n){
-    // 각 수를 실제로 두어보고 정적 평가 → 정렬용 점수 저장 (C++ 원본 방식)
+    // 루트는 수가 많지 않으므로 실제 정적 평가로 정확히 정렬 (C++ 원본 방식 유지)
     for(let i=0;i<n;i++){
       const base=i*MSTRIDE;
       const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
       this._apply(fx,fy,tx,ty,cap);
-      // ord는 MSTRIDE-1 위치 대신 별도 Int32Array 에 저장
-      this._scores||(this._scores=new Int32Array(MAX_MV));
       this._scores[i]=this._eval();
       this._undo(fx,fy,tx,ty,cap);
     }
@@ -845,24 +1015,64 @@ class Search {
     }
   }
 
-  // 탐색 내부의 다음 수 목록: 깊이별 버퍼 사용 (깊이 범위 -14 ~ +15)
+  // 킬러 무브 / 히스토리 휴리스틱 / MVV-LVA 기반 수 정렬 점수
+  // (내부 노드에서는 매 수마다 풀 evaluation을 도는 대신 이 저비용 점수로 정렬해
+  //  정렬 비용을 크게 낮추면서도 알파베타 컷이 훨씬 빨리 발생하도록 한다)
+  _moveScore(fx,fy,tx,ty,cap,side,depth){
+    if(cap){
+      const attacker=this.b[fy*W+fx];
+      // MVV-LVA: 잡히는 기물 가치가 크고, 잡는 기물 가치가 작을수록 먼저 시도
+      return 20000000 + PV[cap]*16 - PV[attacker];
+    }
+    const di=depth+OFFSET;
+    if(di>=0&&di<this.killers.length){
+      const key=MAKE_MV(MAKE_SQ(fx,fy),MAKE_SQ(tx,ty));
+      const k=this.killers[di];
+      if(k[0]===key) return 10000000;
+      if(k[1]===key) return 9000000;
+    }
+    const idx=(side-1)*65536+MAKE_SQ(fx,fy)*256+MAKE_SQ(tx,ty);
+    return this.history[idx]||0;
+  }
+
+  _storeKiller(depth,fx,fy,tx,ty){
+    const di=depth+OFFSET;
+    if(di<0||di>=this.killers.length) return;
+    const key=MAKE_MV(MAKE_SQ(fx,fy),MAKE_SQ(tx,ty));
+    const k=this.killers[di];
+    if(k[0]!==key){ k[1]=k[0]; k[0]=key; }
+  }
+
+  _addHistory(side,fx,fy,tx,ty,rem){
+    const idx=(side-1)*65536+MAKE_SQ(fx,fy)*256+MAKE_SQ(tx,ty);
+    this.history[idx]+=rem*rem;
+    if(this.history[idx]>1000000){
+      for(let i=0;i<this.history.length;i++) this.history[i]>>=1;
+    }
+  }
+
+  _resetSearchTables(){
+    for(let i=0;i<this.killers.length;i++){ this.killers[i][0]=0; this.killers[i][1]=0; }
+    // 히스토리는 완전히 지우지 않고 절반으로 감쇠시켜 이전 탐색의 유용한 정보를 일부 유지
+    for(let i=0;i<this.history.length;i++) this.history[i]=(this.history[i]/2)|0;
+  }
+
+  // 탐색 내부의 다음 수 목록: 깊이별 버퍼 사용
   _nextStage(depth){
-    const di=depth+14; // 버퍼 인덱스 (depth 는 음수 가능)
+    const di=depth+OFFSET; // 버퍼 인덱스 (depth 는 음수 가능)
     const buf=this._bufs[di];
     const saveTmp=this._tmp, saveTmpN=this._tmpN;
     this._tmp=buf; this._tmpN=0;
     const n=this._genAll(buf,0);
     this._nBuf[di]=n;
-    // 평가 기반 정렬
-    if(!this._scores) this._scores=new Int32Array(MAX_MV);
+    const sideAtNode=this.side;
+    // 킬러/히스토리/MVV-LVA 기반 저비용 정렬 (풀 evaluation 미사용 → 훨씬 빠름)
     for(let i=0;i<n;i++){
       const base=i*MSTRIDE;
       const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
-      this._apply(fx,fy,tx,ty,cap);
-      this._scores[i]=this._eval();
-      this._undo(fx,fy,tx,ty,cap);
+      this._scores[i]=this._moveScore(fx,fy,tx,ty,cap,sideAtNode,depth);
     }
-    this._sortBuf(buf,n,this.side===SD.HAN);
+    this._sortBuf(buf,n,true); // 점수가 높을수록(더 유망할수록) 먼저 시도
     this._tmp=saveTmp; this._tmpN=saveTmpN;
     return n;
   }
@@ -885,12 +1095,17 @@ class Search {
       }
     }
 
-    // 위치 보너스
+    // 기물 위치 테이블(PST) + 기존 전술 보너스
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
       const p=b[y*W+x]; if(!p) continue;
+      const isHan = p>PS.BOUNDARY;
+      const pst = PST_KIND[p];
+      if(pst){
+        const rowIdx = isHan ? y : (H-1-y); // 초(CHO)는 한(HAN) 테이블을 뒤집어 재사용
+        const val = pst[rowIdx*W+x];
+        if(isHan) score+=val; else score-=val;
+      }
       switch(p){
-        case PS.CHO_JOL: if(y<6) score-=(6-y)*200; break;
-        case PS.HAN_JOL: if(y>3) score+=(y-3)*200; break;
         case PS.CHO_CHA:
           if(hjr>=0){
             const d=Math.abs(y-hjr)+Math.abs(x-hjc);
@@ -912,69 +1127,208 @@ class Search {
     return score;
   }
 
+  // ── 내부: 퀴센스 서치 (지평선 효과 완화) ──────────────────────────────────
+  // cutoff 깊이에 도달했을 때 정적 평가만 반환하는 대신, 유리한/불리한 잡기가
+  // 남아있는지 몇 수 더 확인해서 전술적인 실수(예: 한 수 뒤에 기물을 잃는 수)를 줄인다.
+  _quiesceCaptures(buf,n){
+    const idxs=[];
+    for(let i=0;i<n;i++) if(buf[i*MSTRIDE+4]) idxs.push(i);
+    idxs.sort((a,b)=>{
+      const ab=a*MSTRIDE, bb=b*MSTRIDE;
+      const attA=this.b[buf[ab+1]*W+buf[ab]], attB=this.b[buf[bb+1]*W+buf[bb]];
+      const sa=PV[buf[ab+4]]*16-PV[attA], sb=PV[buf[bb+4]]*16-PV[attB];
+      return sb-sa;
+    });
+    return idxs;
+  }
+
+  _quiesceMax(alpha,beta,qd){
+    const standPat=this._eval();
+    if(standPat>=beta) return beta;
+    if(standPat>alpha) alpha=standPat;
+    if(qd>=this.qMaxDepth) return alpha;
+
+    const buf=this._qBufs[qd];
+    const saveTmp=this._tmp, saveTmpN=this._tmpN;
+    this._tmp=buf; this._tmpN=0;
+    const n=this._genAll(buf,0);
+    this._tmp=saveTmp; this._tmpN=saveTmpN;
+    if(n===0) return alpha;
+
+    const caps=this._quiesceCaptures(buf,n);
+    for(const i of caps){
+      const base=i*MSTRIDE;
+      const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
+      this._apply(fx,fy,tx,ty,cap); this._flip();
+      const v=this._quiesceMin(alpha,beta,qd+1);
+      this._flip(); this._undo(fx,fy,tx,ty,cap);
+      if(v>alpha) alpha=v;
+      if(alpha>=beta) return beta;
+    }
+    return alpha;
+  }
+
+  _quiesceMin(alpha,beta,qd){
+    const standPat=this._eval();
+    if(standPat<=alpha) return alpha;
+    if(standPat<beta) beta=standPat;
+    if(qd>=this.qMaxDepth) return beta;
+
+    const buf=this._qBufs[qd];
+    const saveTmp=this._tmp, saveTmpN=this._tmpN;
+    this._tmp=buf; this._tmpN=0;
+    const n=this._genAll(buf,0);
+    this._tmp=saveTmp; this._tmpN=saveTmpN;
+    if(n===0) return beta;
+
+    const caps=this._quiesceCaptures(buf,n);
+    for(const i of caps){
+      const base=i*MSTRIDE;
+      const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
+      this._apply(fx,fy,tx,ty,cap); this._flip();
+      const v=this._quiesceMax(alpha,beta,qd+1);
+      this._flip(); this._undo(fx,fy,tx,ty,cap);
+      if(v<beta) beta=v;
+      if(beta<=alpha) return alpha;
+    }
+    return beta;
+  }
+
   // ── 내부: 알파베타 탐색 ─────────────────────────────────────────────────
   _cutoff(depth){ return depth>=this.cutoff; }
 
-  _maxV(alpha,beta,depth){
-    if(this._cutoff(depth)) return this._eval();
+  _maxV(alpha,beta,depth,allowNull){
+    if(this._cutoff(depth)) return this._quiesceMax(alpha,beta,0);
     const rem=this.cutoff-depth;
     const probe=probeHash(this.zk,this.zl,alpha,beta,rem);
     if(probe>-INF) return probe;
 
-    const oa=alpha;
+    const sideAtNode=this.side;
+
+    // Null Move Pruning: 내 차례를 한번 넘겨봐도 여전히 beta 이상이면
+    // (즉 상대가 공짜로 한 수를 더 둬도 내가 유리하면) 이 노드는 더 볼 필요가 없다.
+    if(allowNull!==false && rem>=3 && this._hasNonPawnMaterial(sideAtNode) && !this._isInCheck(sideAtNode)){
+      const R=2;
+      this._flip();
+      const nullVal=this._minV(alpha,beta,depth+1+R,false);
+      this._flip();
+      if(nullVal>=beta) return beta;
+    }
+
     const n=this._nextStage(depth);
     if(n===0) return this._eval();
 
-    const di=depth+14;
+    const di=depth+OFFSET;
     const buf=this._bufs[di];
+    const inCheckHere=this._isInCheck(sideAtNode);
 
     for(let i=0;i<n;i++){
       const base=i*MSTRIDE;
       const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
       this._apply(fx,fy,tx,ty,cap); this._flip();
-      const v=this._minV(alpha,beta,depth+1);
+
+      let v;
+      // Late Move Reduction: 정렬상 뒤쪽(덜 유망)이고, 잡는 수도 아니고,
+      // 체크 상황도 아니라면 얕게 먼저 탐색해보고 유망할 때만 전체 깊이로 재탐색
+      if(i>=3 && !cap && rem>=3 && !inCheckHere){
+        v=this._minV(alpha,alpha+1,depth+2,true);
+        if(v>alpha) v=this._minV(alpha,beta,depth+1,true);
+      } else {
+        v=this._minV(alpha,beta,depth+1,true);
+      }
+
       this._flip(); this._undo(fx,fy,tx,ty,cap);
       if(v>alpha) alpha=v;
-      if(alpha>=beta){ recHash(this.zk,this.zl,HB,v,rem); return beta; }
+      if(alpha>=beta){
+        if(!cap){ this._storeKiller(depth,fx,fy,tx,ty); this._addHistory(sideAtNode,fx,fy,tx,ty,rem); }
+        recHash(this.zk,this.zl,HB,v,rem); return beta;
+      }
     }
     recHash(this.zk,this.zl,HP,alpha,rem);
     return alpha;
   }
 
-  _minV(alpha,beta,depth){
-    if(this._cutoff(depth)) return this._eval();
+  _minV(alpha,beta,depth,allowNull){
+    if(this._cutoff(depth)) return this._quiesceMin(alpha,beta,0);
     const rem=this.cutoff-depth;
     const probe=probeHash(this.zk,this.zl,alpha,beta,rem);
     if(probe>-INF) return probe;
 
-    const ob=beta;
+    const sideAtNode=this.side;
+
+    if(allowNull!==false && rem>=3 && this._hasNonPawnMaterial(sideAtNode) && !this._isInCheck(sideAtNode)){
+      const R=2;
+      this._flip();
+      const nullVal=this._maxV(alpha,beta,depth+1+R,false);
+      this._flip();
+      if(nullVal<=alpha) return alpha;
+    }
+
     const n=this._nextStage(depth);
     if(n===0) return this._eval();
 
-    const di=depth+14;
+    const di=depth+OFFSET;
     const buf=this._bufs[di];
+    const inCheckHere=this._isInCheck(sideAtNode);
 
     for(let i=0;i<n;i++){
       const base=i*MSTRIDE;
       const fx=buf[base],fy=buf[base+1],tx=buf[base+2],ty=buf[base+3],cap=buf[base+4];
       this._apply(fx,fy,tx,ty,cap); this._flip();
-      const v=this._maxV(alpha,beta,depth+1);
+
+      let v;
+      if(i>=3 && !cap && rem>=3 && !inCheckHere){
+        v=this._maxV(beta-1,beta,depth+2,true);
+        if(v<beta) v=this._maxV(alpha,beta,depth+1,true);
+      } else {
+        v=this._maxV(alpha,beta,depth+1,true);
+      }
+
       this._flip(); this._undo(fx,fy,tx,ty,cap);
       if(v<beta) beta=v;
-      if(beta<=alpha){ recHash(this.zk,this.zl,HA,v,rem); return alpha; }
+      if(beta<=alpha){
+        if(!cap){ this._storeKiller(depth,fx,fy,tx,ty); this._addHistory(sideAtNode,fx,fy,tx,ty,rem); }
+        recHash(this.zk,this.zl,HA,v,rem); return alpha;
+      }
     }
     recHash(this.zk,this.zl,HP,beta,rem);
     return beta;
   }
 }
 
-// ─── 브라우저 export (Emscripten MODULARIZE=1 과 동일한 인터페이스) ──────────
-window.SsanatosEngine = function(){
-  return Promise.resolve({ Search });
-};
+// ─── 실행 환경 감지: 메인 스레드 vs Web Worker ──────────────────────────────
+if (typeof window !== 'undefined') {
+  // 메인 스레드: Emscripten MODULARIZE=1 과 동일한 인터페이스로 내보내기
+  window.SsanatosEngine = function(){
+    return Promise.resolve({ Search });
+  };
+} else if (typeof self !== 'undefined' && typeof importScripts === 'function') {
+  // Web Worker 환경: 매 요청마다 새 Search 인스턴스를 생성해 최선수 반환
+  self.onmessage = function(e) {
+    const {cmd, pieces, side, maxTime} = e.data;
+    if (cmd !== 'getBestMove') return;
+
+    if (!ZK) initZobrist(17);
+
+    const s = new Search();
+    // entryLimit = 55% 시점부터 현재 깊이 탐색 마무리 후 종료
+    s.initParams(3, 17, Math.floor(maxTime * 0.55), maxTime);
+    for (const p of pieces) s.addPiece(p.x, p.y, p.char);
+
+    const mv = s.getBestMove(side, 0);
+    if (!mv) { self.postMessage({cmd:'noMove'}); return; }
+
+    const sqSrc=mv&0xff, sqDst=(mv>>>8)&0xff;
+    const fromX=(sqSrc&0xf)-3, fromY=(sqSrc>>4)-3;
+    const toX  =(sqDst&0xf)-3, toY  =(sqDst>>4)-3;
+    self.postMessage({cmd:'bestMove', fromX, fromY, toX, toY});
+  };
+} else if (typeof module !== 'undefined' && module.exports) {
+  // Node.js 환경 (테스트/스모크 테스트 용도)
+  module.exports = { Search, SD, PS };
+}
 
 })();
-
 </script>
 
 <script>
@@ -1284,9 +1638,9 @@ function findBestMove(board, side, maxDepth, timeLimitMs) {
 }
 
 const DIFFICULTY = {
-  easy:   { depth:2, time:1200 },
-  normal: { depth:4, time:2500 },
-  hard:   { depth:7, time:6000 }
+  easy:   { depth:2, time:2000  },   // 2초
+  normal: { depth:4, time:6000  },   // 6초
+  hard:   { depth:7, time:14000 }    // 14초 (Worker 덕분에 UI 멈춤 없음)
 };
 
 /* ---------------------------------------------------------
@@ -1398,21 +1752,21 @@ function sfFindMove(fen, movetimeMs) {
 function updateEngineLabel() {
   const el = document.getElementById('engineLabel');
   if (!el) return;
-  if (ssState === 'ready') { el.textContent = '엔진: ssanatos 엔진 (JS)'; return; }
-  if (ssState === 'loading') { el.textContent = 'ssanatos 엔진 로딩 중…'; return; }
-  const label = {
-    idle: '', loading: '외부 엔진(Fairy-Stockfish) 로딩 중…',
-    ready: '엔진: Fairy-Stockfish', failed: '엔진: 내장 엔진'
-  }[sfState];
-  el.textContent = label;
+  if (aiWorker) {
+    el.textContent = '엔진: ssanatos (Web Worker — ' + {
+      easy:'2초', normal:'6초', hard:'14초'
+    }[state && state.difficulty || 'hard'] + ' 탐색)';
+    return;
+  }
+  el.textContent = '엔진: 내장 엔진 (Worker 미지원)';
 }
 
 /* ---------------------------------------------------------
-   외부 엔진 2: 동우장기류 원본 C++ 엔진 (Emscripten WASM 빌드)
-   - 사용자가 제공한 search.cpp/search.hpp(EMSCRIPTEN_BINDINGS 포함)를
-     로컬에서 emcc로 컴파일해 만든 ssanatos-engine.js/.wasm을 index.html과
-     같은 폴더에 두면 자동으로 로드해서 사용한다 (완전 정적, CDN 불필요).
-   - 파일이 없으면 <script> 로드가 실패하고 자동으로 무시된다.
+   Web Worker 기반 AI 엔진
+   - ssanatos-engine.js 를 백그라운드 스레드에서 실행
+   - UI를 멈추지 않고 긴 탐색 시간(최대 14초) 사용 가능
+   - 매 요청마다 현재 state.board 를 통째로 전달해 독립 탐색
+     → 수 미러링(make/moveBack 동기화) 불필요
    --------------------------------------------------------- */
 const SS_LETTER = {
   G:{cho:'J',han:'j'}, A:{cho:'A',han:'a'}, C:{cho:'P',han:'p'},
@@ -1420,86 +1774,70 @@ const SS_LETTER = {
 };
 const SS_SIDE = { cho: 1, han: 2 };
 
-let ssModuleFactory = null;
-let ssEngine = null;
-let ssState = 'idle'; // idle | loading | ready | failed
+let aiWorker = null;
+let aiWorkerPending = null; // { resolve, timer }
 
-function loadSsanatosScript(timeoutMs) {
+function initAiWorker() {
+  try {
+    // 단일 파일 버전: ssanatos-inline-slot 스크립트 태그에서 읽기
+    // 분리 파일 버전: ssanatos-engine.js 를 직접 Worker로 로드
+    const inlineSlot = document.getElementById('ssanatos-inline-slot');
+    const inlineSrc  = inlineSlot ? inlineSlot.textContent.trim() : '';
+
+    if (inlineSrc) {
+      const blob = new Blob([inlineSrc], { type: 'text/javascript' });
+      const url  = URL.createObjectURL(blob);
+      aiWorker   = new Worker(url);
+      URL.revokeObjectURL(url);
+    } else {
+      aiWorker = new Worker('ssanatos-engine.js');
+    }
+
+    aiWorker.onmessage = (e) => {
+      if (!aiWorkerPending) return;
+      const { resolve, timer } = aiWorkerPending;
+      aiWorkerPending = null;
+      clearTimeout(timer);
+      const d = e.data;
+      if (d.cmd === 'bestMove') {
+        resolve({ from: { r: d.fromY, c: d.fromX }, to: { r: d.toY, c: d.toX } });
+      } else {
+        resolve(null);
+      }
+    };
+    aiWorker.onerror = (err) => {
+      console.warn('AI Worker 오류:', err);
+      if (aiWorkerPending) { aiWorkerPending.resolve(null); aiWorkerPending = null; }
+      aiWorker = null;
+    };
+  } catch (err) {
+    console.warn('Worker 초기화 실패:', err);
+    aiWorker = null;
+  }
+  updateEngineLabel();
+}
+
+function workerGetBestMove(board, side, maxTime) {
   return new Promise((resolve) => {
-    // 이미 같은 페이지 안에 엔진 코드가 인라인으로 포함돼 있다면(단일 파일 버전) 바로 사용.
-    if (typeof window.SsanatosEngine === 'function') { resolve(window.SsanatosEngine); return; }
-    let settled = false;
-    const finish = (val) => { if (!settled) { settled = true; resolve(val); } };
-    const script = document.createElement('script');
-    script.src = 'ssanatos-engine.js'; // index.html과 같은 폴더에 있어야 함
-    script.onload = () => finish(typeof window.SsanatosEngine === 'function' ? window.SsanatosEngine : null);
-    script.onerror = () => finish(null);
-    document.head.appendChild(script);
-    setTimeout(() => finish(null), timeoutMs);
-  });
-}
+    if (!aiWorker) { resolve(null); return; }
 
-async function initSsanatos() {
-  ssState = 'loading';
-  updateEngineLabel();
-  const factory = await loadSsanatosScript(6000);
-  if (!factory) { ssState = 'failed'; updateEngineLabel(); return; }
-  try {
-    ssModuleFactory = await factory();
-    ssState = 'ready';
-  } catch (e) { ssState = 'failed'; }
-  updateEngineLabel();
-}
-
-// 현재 state.board 전체를 새 Search 인스턴스에 반영한다 (새 게임 시작 시 1회 호출).
-function ssSetupGame(board) {
-  if (ssState !== 'ready') return;
-  try {
-    ssEngine = new ssModuleFactory.Search();
-    ssEngine.initParams(3, 17, 4000, 8000);
+    // 현재 보드를 기물 목록으로 변환
+    const pieces = [];
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const p = board[r][c];
-        if (!p) continue;
-        ssEngine.addPiece(c, r, SS_LETTER[p.type][p.side]);
+        if (p) pieces.push({ x: c, y: r, char: SS_LETTER[p.type][p.side] });
       }
     }
-  } catch (e) { ssEngine = null; ssState = 'failed'; updateEngineLabel(); }
-}
 
-// 사람/AI가 둔 수를 동우장기 엔진 내부 상태에도 동일하게 반영(미러링)한다.
-function ssMirrorMove(move) {
-  if (ssState !== 'ready' || !ssEngine) return;
-  try {
-    const ret = ssEngine.makeMove(move.from.c, move.from.r, move.to.c, move.to.r);
-    if (ret < 0) { ssState = 'failed'; ssEngine = null; updateEngineLabel(); }
-  } catch (e) { ssState = 'failed'; ssEngine = null; updateEngineLabel(); }
-}
+    const timer = setTimeout(() => {
+      aiWorkerPending = null;
+      resolve(null);
+    }, maxTime + 8000); // 엔진 시간 초과 후 여유 8초
 
-function ssMirrorUndo(times) {
-  if (ssState !== 'ready' || !ssEngine) return;
-  try { for (let i = 0; i < times; i++) ssEngine.moveBack(); }
-  catch (e) { ssState = 'failed'; ssEngine = null; updateEngineLabel(); }
-}
-
-function ssDecodeMove(mv) {
-  if (!mv) return null;
-  const sqSrc = mv & 0xff, sqDst = (mv >>> 8) & 0xff;
-  const fromX = (sqSrc & 0x0f) - 3, fromY = (sqSrc >> 4) - 3;
-  const toX = (sqDst & 0x0f) - 3, toY = (sqDst >> 4) - 3;
-  return { from: { r: fromY, c: fromX }, to: { r: toY, c: toX } };
-}
-
-// 동우장기 엔진에게 최선의 수를 물어보고, 실제로 그 수를 엔진에도 확정 반영한다.
-function ssFindMove(side) {
-  if (ssState !== 'ready' || !ssEngine) return null;
-  try {
-    const mv = ssEngine.getBestMove(SS_SIDE[side], 0);
-    const pair = ssDecodeMove(mv);
-    if (!pair) return null;
-    ssEngine.makeMove(pair.from.c, pair.from.r, pair.to.c, pair.to.r);
-    return pair;
-  } catch (e) { ssState = 'failed'; ssEngine = null; updateEngineLabel(); return null; }
+    aiWorkerPending = { resolve, timer };
+    aiWorker.postMessage({ cmd: 'getBestMove', pieces, side: SS_SIDE[side], maxTime });
+  });
 }
 
 /* =========================================================
@@ -1516,6 +1854,14 @@ let state = null; // 게임 상태 객체
 function px(c) { return MARGIN + c * DX; }
 function py(r) { return MARGIN + r * DY; }
 
+// ── 화면 회전(한을 선택하면 보드를 180도 돌려서 보여줌) ──────────────────
+// 기물 좌표(state.board[r][c])와 클릭 판정(dataset.r/c)은 항상 "논리
+// 좌표"를 그대로 쓰고, 화면에 그릴 때(픽셀 좌표로 바꿀 때)만 뒤집는다.
+// 그래서 이동 생성/기보/undo 등 게임 로직은 전혀 손댈 필요가 없다.
+function isFlipped() { return !!(state && state.humanSide === 'han'); }
+function sx(c) { return px(isFlipped() ? COLS - 1 - c : c); }
+function sy(r) { return py(isFlipped() ? ROWS - 1 - r : r); }
+
 function newGameState(choArr, hanArr, difficulty, humanSide) {
   const board = initialBoard(choArr, hanArr);
   return {
@@ -1529,7 +1875,8 @@ function newGameState(choArr, hanArr, difficulty, humanSide) {
     history: [{ board: cloneBoard(board), turn: 'cho' }],
     log: [],
     aiThinking: false,
-    gameOver: false
+    gameOver: false,
+    editMode: false
   };
 }
 
@@ -1609,12 +1956,13 @@ function buildBoardStatic(svg) {
   for (let r=0;r<ROWS;r++){
     for (let c=0;c<COLS;c++){
       const hit = svgns('circle');
-      hit.setAttribute('cx', px(c)); hit.setAttribute('cy', py(r));
+      hit.setAttribute('cx', sx(c)); hit.setAttribute('cy', sy(r));
       hit.setAttribute('r', 27);
       hit.setAttribute('fill', 'transparent');
       hit.setAttribute('pointer-events', 'all');
       hit.dataset.r = r; hit.dataset.c = c;
       hit.style.cursor = 'pointer';
+      hit.style.touchAction = 'none';
       hitLayer.appendChild(hit);
     }
   }
@@ -1634,7 +1982,7 @@ function renderPieces() {
   if (last) {
     [last.from, last.to].forEach(pos => {
       const ring = svgns('circle');
-      ring.setAttribute('cx', px(pos.c)); ring.setAttribute('cy', py(pos.r));
+      ring.setAttribute('cx', sx(pos.c)); ring.setAttribute('cy', sy(pos.r));
       ring.setAttribute('r', 29);
       ring.setAttribute('fill','none');
       ring.setAttribute('stroke','#ffd77a');
@@ -1647,7 +1995,7 @@ function renderPieces() {
   // 선택 표시 + 가능한 수
   if (state.selected) {
     const sel = svgns('circle');
-    sel.setAttribute('cx', px(state.selected.c)); sel.setAttribute('cy', py(state.selected.r));
+    sel.setAttribute('cx', sx(state.selected.c)); sel.setAttribute('cy', sy(state.selected.r));
     sel.setAttribute('r', 30);
     sel.setAttribute('fill','none');
     sel.setAttribute('stroke','#8fe3c7');
@@ -1656,7 +2004,7 @@ function renderPieces() {
 
     state.legalForSelected.forEach(m => {
       const dot = svgns('circle');
-      dot.setAttribute('cx', px(m.to.c)); dot.setAttribute('cy', py(m.to.r));
+      dot.setAttribute('cx', sx(m.to.c)); dot.setAttribute('cy', sy(m.to.r));
       dot.setAttribute('r', m.capture ? 28 : 8);
       dot.setAttribute('fill', m.capture ? 'none' : '#8fe3c7');
       if (m.capture) { dot.setAttribute('stroke','#ff8a6b'); dot.setAttribute('stroke-width','3'); }
@@ -1669,37 +2017,56 @@ function renderPieces() {
     for (let c=0;c<COLS;c++){
       const p = state.board[r][c];
       if (!p) continue;
-      const cx = px(c), cy = py(r);
-      const g = svgns('g');
-      g.setAttribute('transform', `translate(${cx},${cy})`);
-
-      const rim = svgns('circle');
-      rim.setAttribute('r', 25);
-      rim.setAttribute('fill', '#e9cd93');
-      rim.setAttribute('stroke', p.type === 'G' ? '#c8a24a' : '#9c7239');
-      rim.setAttribute('stroke-width', p.type === 'G' ? 3.5 : 2.5);
-      g.appendChild(rim);
-
-      const rim2 = svgns('circle');
-      rim2.setAttribute('r', 20.5);
-      rim2.setAttribute('fill', 'none');
-      rim2.setAttribute('stroke', '#c7a35f');
-      rim2.setAttribute('stroke-width', 1);
-      rim2.setAttribute('opacity','0.7');
-      g.appendChild(rim2);
-
-      const text = svgns('text');
-      text.setAttribute('text-anchor','middle');
-      text.setAttribute('dominant-baseline','central');
-      text.setAttribute('font-family',"'Song Myung', serif");
-      text.setAttribute('font-size', p.type==='G' ? '25' : '23');
-      text.setAttribute('fill', p.side === 'han' ? '#a8342a' : '#1f5b46');
-      text.textContent = PIECE_LABEL[p.side][p.type];
-      g.appendChild(text);
-
+      const g = buildPieceGroup(p);
+      g.setAttribute('transform', `translate(${sx(c)},${sy(r)})`);
       pieceLayer.appendChild(g);
     }
   }
+
+  updateEvalPanel();
+}
+
+function buildPieceGroup(p) {
+  const outer = svgns('g');
+  const scale = (p.type === 'S' || p.type === 'A') ? 0.8 : 1; // 졸/병, 사는 80% 크기
+  const g = scale !== 1 ? svgns('g') : outer;
+  if (scale !== 1) {
+    g.setAttribute('transform', `scale(${scale})`);
+    outer.appendChild(g);
+  }
+
+  const rim = svgns('circle');
+  rim.setAttribute('r', 25);
+  rim.setAttribute('fill', '#e9cd93');
+  rim.setAttribute('stroke', p.type === 'G' ? '#c8a24a' : '#9c7239');
+  rim.setAttribute('stroke-width', p.type === 'G' ? 3.5 : 2.5);
+  g.appendChild(rim);
+
+  const rim2 = svgns('circle');
+  rim2.setAttribute('r', 20.5);
+  rim2.setAttribute('fill', 'none');
+  rim2.setAttribute('stroke', '#c7a35f');
+  rim2.setAttribute('stroke-width', 1);
+  rim2.setAttribute('opacity','0.7');
+  g.appendChild(rim2);
+
+  const textColor = p.side === 'han' ? '#a8342a' : '#1f5b46';
+  const text = svgns('text');
+  text.setAttribute('text-anchor','middle');
+  text.setAttribute('dominant-baseline','central');
+  text.setAttribute('font-family',"'Song Myung', serif");
+  text.setAttribute('font-size', p.type==='G' ? '25' : '23');
+  text.setAttribute('font-weight', '700');
+  text.setAttribute('fill', textColor);
+  // 'Song Myung'은 단일 굵기 폰트라 font-weight만으로는 잘 안 굵어져서,
+  // 같은 색 스트로크를 덧대 획을 두껍게(의사-볼드) 만든다.
+  text.setAttribute('stroke', textColor);
+  text.setAttribute('stroke-width', '0.9');
+  text.setAttribute('paint-order', 'stroke fill');
+  text.textContent = PIECE_LABEL[p.side][p.type];
+  g.appendChild(text);
+
+  return outer;
 }
 
 function pieceName(type) {
@@ -1746,70 +2113,78 @@ function showEndModal(winnerSide, wasCheck) {
   document.getElementById('modalOverlay').hidden = false;
 }
 
-function doMove(move, skipSsMirror) {
+function doMove(move) {
+  hideThinkOverlay();
   const { board: nb, captured } = applyMove(state.board, move);
   state.board = nb;
   appendLog(state.turn, move, captured);
   state.log.push(move);
-  if (!skipSsMirror) ssMirrorMove(move);
   state.turn = opponent(state.turn);
   state.selected = null;
   state.legalForSelected = [];
   state.history.push({ board: cloneBoard(state.board), turn: state.turn });
   renderPieces();
   updateTurnBadge();
+  refineWinProbWithSearch();
 }
 
 async function aiTurn() {
   if (state.gameOver) return;
   state.aiThinking = true;
   document.getElementById('thinkingLabel').textContent = 'AI가 생각 중...';
-  await new Promise(r => setTimeout(r, 60));
+  updateEngineLabel();
+  await new Promise(r => setTimeout(r, 80));
 
   const cfg = DIFFICULTY[state.difficulty];
   let move = null;
-  let usedDw = false;
 
-  if (state.difficulty === 'hard' && ssState === 'ready') {
-    const pair = ssFindMove(state.turn);
+  // ── 1순위: Web Worker (백그라운드 탐색, UI 멈춤 없음, 긴 탐색 시간) ──
+  if (aiWorker) {
+    const pair = await workerGetBestMove(state.board, state.turn, cfg.time);
     if (pair) {
       const legal = genLegalMoves(state.board, state.turn);
-      move = legal.find(m => m.from.r === pair.from.r && m.from.c === pair.from.c &&
-                              m.to.r === pair.to.r && m.to.c === pair.to.c) || null;
-      if (move) usedDw = true;
+      move = legal.find(m =>
+        m.from.r === pair.from.r && m.from.c === pair.from.c &&
+        m.to.r   === pair.to.r   && m.to.c   === pair.to.c
+      ) || null;
     }
   }
 
-  if (!move && state.difficulty === 'hard' && sfState === 'ready') {
+  // ── 2순위: Fairy-Stockfish CDN (로드에 성공한 경우만) ──
+  if (!move && sfState === 'ready') {
     try {
       const fen = boardToFen(state.board, state.turn);
-      const uci = await sfFindMove(fen, cfg.time);
+      const uci = await sfFindMove(fen, Math.min(cfg.time, 6000));
       if (uci) {
         const pair = parseUciSquarePair(uci);
         if (pair) {
           const legal = genLegalMoves(state.board, state.turn);
-          move = legal.find(m => m.from.r === pair.from.r && m.from.c === pair.from.c &&
-                                  m.to.r === pair.to.r && m.to.c === pair.to.c) || null;
+          move = legal.find(m =>
+            m.from.r === pair.from.r && m.from.c === pair.from.c &&
+            m.to.r   === pair.to.r   && m.to.c   === pair.to.c
+          ) || null;
         }
       }
     } catch (e) { move = null; }
   }
 
+  // ── 3순위: 내장 JS 엔진 (블로킹, Worker 사용 불가 환경 전용) ──
   if (!move) {
-    const res = findBestMove(state.board, state.turn, cfg.depth, cfg.time);
+    const res = findBestMove(state.board, state.turn, cfg.depth, Math.min(cfg.time, 5000));
     move = res && res.move;
-    usedDw = false;
   }
 
   document.getElementById('thinkingLabel').textContent = '';
   state.aiThinking = false;
+  updateEngineLabel();
   if (!move) { checkGameEnd(); return; }
-  doMove(move, usedDw);
+  doMove(move);
   if (checkGameEnd()) return;
   state.legalForHuman = genLegalMoves(state.board, state.humanSide);
 }
 
 function onBoardClick(e) {
+  if (state.editMode) { onEditSquareClick(e); return; }
   if (state.gameOver || state.aiThinking) return;
   if (state.turn !== state.humanSide) return;
   const target = e.target.closest('[data-r]');
@@ -1843,7 +2218,8 @@ function selectPiece(r, c) {
 }
 
 function undo() {
-  if (state.aiThinking || state.gameOver) return;
+  if (state.aiThinking || state.gameOver || state.editMode) return;
+  hideThinkOverlay();
   // 사람 차례로 되돌리기: 최소 2수(사람+AI) 또는 1수 되돌림
   if (state.history.length <= 1) return;
   let popCount = 0;
@@ -1865,13 +2241,571 @@ function undo() {
   for (let i = 0; i < popCount; i++) {
     if (log.lastChild) log.removeChild(log.lastChild);
   }
-  ssMirrorUndo(popCount);
   renderPieces();
   updateTurnBadge();
+  refineWinProbWithSearch();
 }
 
 /* =========================================================
-   3. 설정 화면 / 초기화
+   2.5 형세 판단 (기물 점수 합산 · 승률 추정)
+   - 전통 장기 기물점수 비율(차13·포7·마5·상3·사3·졸2, 궁 제외)로
+     남은 기물의 점수를 합산한다. 엔진 내부 PIECE_VALUE와 정확히
+     같은 비율(10배)이라 그대로 재사용한다.
+   - 점수차를 로지스틱 함수로 변환해 대략적인 승률을 추정한다.
+     탐색 기반이 아닌 "기물 점수 + 장군 여부"만 반영하는 간이
+     추정치이며, 실제 형세(자리, 활동성 등)는 반영하지 않는다.
+   ========================================================= */
+const WIN_PROB_K = 12; // 점수차 민감도(작을수록 점수차에 승률이 더 급격히 반응)
+const HAN_TEMPO_BONUS = 1.5; // 초(楚)가 먼저 두므로, 후수인 한(漢)에게 주는 덤(전통 기물점수 관례)
+
+function computeMaterialScores(board) {
+  let cho = 0, han = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const p = board[r][c];
+      if (!p || p.type === 'G') continue;
+      const v = PIECE_VALUE[p.type] / 10;
+      if (p.side === 'cho') cho += v; else han += v;
+    }
+  }
+  han += HAN_TEMPO_BONUS;
+  return { cho, han };
+}
+
+function estimateWinProb(board) {
+  const { cho, han } = computeMaterialScores(board);
+  let diff = cho - han;
+  if (isInCheck(board, 'cho')) diff -= 1.5;
+  if (isInCheck(board, 'han')) diff += 1.5;
+  const choWin = 1 / (1 + Math.pow(10, -diff / WIN_PROB_K));
+  return { cho, han, choWin };
+}
+
+function formatScore(v) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+function updateEvalPanel() {
+  if (!state) return;
+  const { cho, han, choWin } = estimateWinProb(state.board);
+
+  const choScoreEl = document.getElementById('choScoreText');
+  const hanScoreEl = document.getElementById('hanScoreText');
+  if (choScoreEl) choScoreEl.textContent = formatScore(cho);
+  if (hanScoreEl) hanScoreEl.textContent = formatScore(han);
+
+  const choPct = Math.round(choWin * 100);
+  const hanPct = 100 - choPct;
+  const barCho = document.getElementById('winProbCho');
+  const barHan = document.getElementById('winProbHan');
+  if (barCho) barCho.style.width = choPct + '%';
+  if (barHan) barHan.style.width = hanPct + '%';
+  const textEl = document.getElementById('winProbText');
+  if (textEl) textEl.textContent = `초 ${choPct}% · 한 ${hanPct}% (기물점수 기반 추정)`;
+}
+
+/* ---------------------------------------------------------
+   승률을 "기물점수"가 아니라 "형세"(탐색 결과) 기반으로 다시 계산.
+   - state.board를 바꾸지 않고, 지금 둘 차례인 쪽을 기준으로
+     얕은 깊이(negamaxFast, depth=LIVE_EVAL_DEPTH)의 탐색 점수를
+     구해, 그 점수(=최선을 다했을 때 예상되는 실질적 유불리, 상대의
+     응수까지 반영된 값)를 절대(초 vs 한) 점수차로 환산한다.
+   - doMove()/undo()/새 게임 시작 직후에 비동기로 호출되며,
+     계산 중에는 기물점수 기반 수치가 그대로 보이다가 완료되면
+     막대와 문구가 "형세 기반"으로 갱신된다.
+   - 실제 대국 엔진(worker/Stockfish)과는 별개의 얕은 탐색이라
+     완전히 같은 평가는 아니지만, 단순 기물 합산보다 앞으로의
+     교환/전술을 반영한다는 점에서 "형세"에 더 가깝다.
+   --------------------------------------------------------- */
+const LIVE_EVAL_DEPTH = 3;
+const LIVE_EVAL_TIME_MS = 900;
+const WIN_PROB_SEARCH_K = 12; // 기물점수 기반과 동일 척도(점수차 12당 승률 약 88:12)
+let liveEvalToken = 0;
+
+async function refineWinProbWithSearch() {
+  if (!state || state.gameOver) return;
+  const myToken = ++liveEvalToken;
+  const board = state.board;
+  const side = state.turn;
+  if (genLegalMoves(board, side).length === 0) return;
+
+  const textEl = document.getElementById('winProbText');
+  if (textEl) textEl.textContent = '형세 분석 중...';
+
+  await new Promise(res => setTimeout(res, 0)); // "분석 중" 문구를 먼저 그리도록 한 틱 양보
+
+  const deadline = Date.now() + LIVE_EVAL_TIME_MS;
+  const res = negamaxFast(board, LIVE_EVAL_DEPTH, -Infinity, Infinity, side, deadline);
+
+  // 계산 도중 다른 수가 두어지는 등 상태가 바뀌었으면 결과를 버린다.
+  if (myToken !== liveEvalToken || state.board !== board) return;
+
+  let diff = (side === 'cho' ? res.score : -res.score) / 10;
+  if (isInCheck(board, 'cho')) diff -= 1.0;
+  if (isInCheck(board, 'han')) diff += 1.0;
+  diff += HAN_TEMPO_BONUS; // 후수 덤도 동일하게 반영
+
+  const choWin = 1 / (1 + Math.pow(10, -diff / WIN_PROB_SEARCH_K));
+  const choPct = Math.round(choWin * 100);
+  const hanPct = 100 - choPct;
+
+  const barCho = document.getElementById('winProbCho');
+  const barHan = document.getElementById('winProbHan');
+  if (barCho) barCho.style.width = choPct + '%';
+  if (barHan) barHan.style.width = hanPct + '%';
+  if (textEl) textEl.textContent = `초 ${choPct}% · 한 ${hanPct}% (형세 기반 추정, ${LIVE_EVAL_DEPTH}수 앞 탐색)`;
+}
+
+/* =========================================================
+   3. AI 생각 보기 (Thinking View)
+   - 실제 대국에 쓰이는 엔진(worker/Stockfish)과는 별개로,
+     이미 있는 내장 JS 엔진(negamaxFast)을 얕은 깊이로 여러 번
+     돌려서 "AI가 앞으로 둘 5수"를 빠르게 미리 계산한다.
+   - 상대의 1번째 응수(ply2)에서만 유력한 후보 2개로 가지를 나누고,
+     그 뒤로는(ply3~5) 각 가지의 최선 수만 이어서 계산한다.
+   - 계산 결과는 실제 판을 바꾸지 않고, 현재 기물 배치 위에
+     이동 궤적(빨간 화살표)만 겹쳐서 보여준다.
+   ========================================================= */
+const THINK_DEPTH = 3;
+const THINK_TIME_MS = 1200;
+const THINK_PLIES = 5;
+let thinkVisible = false;
+
+function scoreRootMoves(board, side, depth, deadline) {
+  const moves = orderMoves(genLegalMoves(board, side));
+  const scored = [];
+  for (const m of moves) {
+    const target = board[m.to.r][m.to.c];
+    let score;
+    if (target && target.type === 'G') {
+      score = MATE_SCORE + depth;
+    } else {
+      const { board: nb } = applyMove(board, m);
+      const res = negamaxFast(nb, depth - 1, -Infinity, Infinity, opponent(side), deadline);
+      score = -res.score;
+    }
+    scored.push({ move: m, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored;
+}
+
+function quickBestMove(board, side, depth, timeMs) {
+  if (genLegalMoves(board, side).length === 0) return null;
+  const scored = scoreRootMoves(board, side, depth, Date.now() + timeMs);
+  return scored.length ? scored[0].move : null;
+}
+
+function quickTopMoves(board, side, depth, timeMs, topN) {
+  if (genLegalMoves(board, side).length === 0) return [];
+  const scored = scoreRootMoves(board, side, depth, Date.now() + timeMs);
+  return scored.slice(0, topN).map(s => s.move);
+}
+
+function yieldToUI() { return new Promise(res => setTimeout(res, 0)); }
+
+async function computeThinkLines() {
+  const aiSide = opponent(state.humanSide);
+  const board0 = state.board;
+  if (genLegalMoves(board0, aiSide).length === 0) return null;
+
+  await yieldToUI();
+  const move1 = quickBestMove(board0, aiSide, THINK_DEPTH, THINK_TIME_MS);
+  if (!move1) return null;
+  const board1 = applyMove(board0, move1).board;
+  const oppSide = opponent(aiSide);
+
+  await yieldToUI();
+  const oppReplies = quickTopMoves(board1, oppSide, THINK_DEPTH, THINK_TIME_MS, 2);
+
+  if (oppReplies.length === 0) {
+    // 상대가 응수할 수 없는 경우(외통 등) — 1수만 표시
+    return { aiSide, branches: [{ moves: [move1], sides: [aiSide], finalBoard: board1 }] };
+  }
+
+  const branches = [];
+  for (const move2 of oppReplies) {
+    const line = [move1, move2];
+    const sides = [aiSide, oppSide];
+    let curBoard = applyMove(board1, move2).board;
+    let curSide = aiSide;
+
+    while (line.length < THINK_PLIES) {
+      if (genLegalMoves(curBoard, curSide).length === 0) break;
+      await yieldToUI();
+      const mv = quickBestMove(curBoard, curSide, THINK_DEPTH, THINK_TIME_MS);
+      if (!mv) break;
+      line.push(mv);
+      sides.push(curSide);
+      curBoard = applyMove(curBoard, mv).board;
+      curSide = opponent(curSide);
+    }
+    branches.push({ moves: line, sides, finalBoard: curBoard });
+  }
+  return { aiSide, branches };
+}
+
+function clearThinkOverlay() {
+  const svg = document.getElementById('boardSvg');
+  const layer = svg && svg.querySelector('#thinkLayer');
+  if (layer) layer.remove();
+}
+
+function ensureThinkLayer(svg) {
+  clearThinkOverlay();
+  let defs = svg.querySelector('#thinkDefs');
+  if (!defs) {
+    defs = svgns('defs');
+    defs.setAttribute('id', 'thinkDefs');
+    svg.appendChild(defs);
+  }
+  defs.innerHTML = '';
+  const marker = svgns('marker');
+  marker.setAttribute('id', 'thinkArrowHead');
+  marker.setAttribute('viewBox', '0 0 10 10');
+  marker.setAttribute('refX', '8'); marker.setAttribute('refY', '5');
+  marker.setAttribute('markerWidth', '6.5'); marker.setAttribute('markerHeight', '6.5');
+  marker.setAttribute('orient', 'auto-start-reverse');
+  const mpath = svgns('path');
+  mpath.setAttribute('d', 'M0,0 L10,5 L0,10 Z');
+  mpath.setAttribute('fill', 'rgba(214,26,20,0.55)');
+  marker.appendChild(mpath);
+  defs.appendChild(marker);
+
+  const layer = svgns('g');
+  layer.setAttribute('id', 'thinkLayer');
+  layer.setAttribute('pointer-events', 'none');
+  svg.appendChild(layer);
+  return layer;
+}
+
+function offsetSegment(x1, y1, x2, y2, amount) {
+  if (!amount) return { x1, y1, x2, y2 };
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  return { x1: x1 + nx * amount, y1: y1 + ny * amount, x2: x2 + nx * amount, y2: y2 + ny * amount };
+}
+
+function drawThinkArrow(layer, mv, opts) {
+  const { label, dash, offset } = opts;
+  let x1 = sx(mv.from.c), y1 = sy(mv.from.r);
+  let x2 = sx(mv.to.c), y2 = sy(mv.to.r);
+  const o = offsetSegment(x1, y1, x2, y2, offset);
+  x1 = o.x1; y1 = o.y1; x2 = o.x2; y2 = o.y2;
+
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  const startPad = 16, endPad = 24;
+  const px1 = x1 + ux * startPad, py1 = y1 + uy * startPad;
+  const px2 = x2 - ux * endPad, py2 = y2 - uy * endPad;
+
+  const line = svgns('line');
+  line.setAttribute('x1', px1); line.setAttribute('y1', py1);
+  line.setAttribute('x2', px2); line.setAttribute('y2', py2);
+  line.setAttribute('stroke', '#e21e14');
+  line.setAttribute('stroke-width', '13');
+  line.setAttribute('stroke-linecap', 'round');
+  line.setAttribute('opacity', '0.22');
+  if (dash) line.setAttribute('stroke-dasharray', dash);
+  line.setAttribute('marker-end', 'url(#thinkArrowHead)');
+  layer.appendChild(line);
+
+  // 순서 번호 배지 (선 위 불투명도와 무관하게 항상 또렷이 보이도록 별도 처리)
+  const mx = (px1 + px2) / 2, my = (py1 + py2) / 2;
+  const badge = svgns('g');
+  badge.setAttribute('transform', `translate(${mx},${my})`);
+  const circle = svgns('circle');
+  circle.setAttribute('r', '10.5');
+  circle.setAttribute('fill', 'rgba(255,250,238,0.92)');
+  circle.setAttribute('stroke', '#a8342a');
+  circle.setAttribute('stroke-width', '1.5');
+  badge.appendChild(circle);
+  const text = svgns('text');
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('dominant-baseline', 'central');
+  text.setAttribute('font-family', "'Noto Sans KR', sans-serif");
+  text.setAttribute('font-size', '11');
+  text.setAttribute('font-weight', '700');
+  text.setAttribute('fill', '#7c2620');
+  text.textContent = label;
+  badge.appendChild(text);
+  layer.appendChild(badge);
+}
+
+function renderThinkOverlay(result) {
+  const svg = document.getElementById('boardSvg');
+  const layer = ensureThinkLayer(svg);
+  const multi = result.branches.length > 1;
+
+  result.branches.forEach((branch, bi) => {
+    const branchTag = multi ? (bi === 0 ? 'A' : 'B') : '';
+    const dash = bi === 1 ? '9,7' : null;
+    const baseOffset = bi === 1 ? 8 : 0;
+
+    branch.moves.forEach((mv, idx) => {
+      const ply = idx + 1;
+      if (ply === 1 && bi > 0) return; // 첫 수는 두 변화가 공유하므로 한 번만 표시
+      const label = ply === 1 ? '1' : `${ply}${branchTag}`;
+      drawThinkArrow(layer, mv, {
+        label,
+        dash: ply === 1 ? null : dash,
+        offset: ply === 1 ? 0 : baseOffset
+      });
+    });
+  });
+}
+
+function moveDescText(side, mv) {
+  return `${sideName(side)} ${pieceName(mv.piece)}(${mv.from.c + 1},${mv.from.r + 1})→(${mv.to.c + 1},${mv.to.r + 1})`;
+}
+
+function renderThinkText(result) {
+  const el = document.getElementById('thinkPanelText');
+  if (!el) return;
+  const multi = result.branches.length > 1;
+  let html = `<div style="color:#e9cd93; margin-bottom:4px;">AI(${sideName(result.aiSide)}) 예상 수순</div>`;
+  result.branches.forEach((branch, bi) => {
+    const label = multi ? `변화 ${bi === 0 ? 'A' : 'B'}` : '예상 수순';
+    const parts = branch.moves.map((mv, i) => moveDescText(branch.sides[i], mv));
+    const ev = estimateWinProb(branch.finalBoard);
+    const choPct = Math.round(ev.choWin * 100), hanPct = 100 - choPct;
+    html += `<div style="margin-top:6px;"><b style="color:#ffd77a;">${label}</b><br>${parts.join(' · ')}<br>` +
+      `<span style="color:#8fe3c7;">→ 예상 형세: 초 ${formatScore(ev.cho)} · 한 ${formatScore(ev.han)} (초 ${choPct}% · 한 ${hanPct}%)</span></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function hideThinkOverlay() {
+  thinkVisible = false;
+  clearThinkOverlay();
+  const panel = document.getElementById('thinkPanelText');
+  if (panel) panel.innerHTML = '';
+  const btn = document.getElementById('thinkViewBtn');
+  if (btn) { btn.textContent = 'AI 생각 보기 (5수)'; btn.disabled = false; }
+}
+
+/* =========================================================
+   3.5 임의 배치 (Custom Arrangement / Board Editor)
+   - 게임 중간에 판 위 기물을 자유롭게 재배치하는 모드.
+   - 궁성/기물 개수 등 정식 배치 규칙은 강제하지 않는다(연습/분석용
+     샌드박스이므로 "마음대로" 놓을 수 있게 둔다). 다만 장군/외통
+     판정이 정상 동작하려면 궁이 각 쪽에 하나씩 있어야 하므로,
+     그렇지 않으면 적용 시 경고만 보여준다(막지는 않음).
+   - state.board 를 편집 중 그대로 사용해 기존 renderPieces()를
+     재사용하고(기물점수 패널도 편집 중 실시간으로 갱신됨), 취소 시
+     편집 전 스냅샷으로 되돌린다.
+   ========================================================= */
+const EDIT_TYPES = ['A', 'C', 'S', 'H', 'E', 'R']; // 궁(G)은 팔레트에서 제외 — 기존 궁은 드래그로만 재배치
+let editTool = null;      // { side, type } | 'erase' | null
+let editOrigBoard = null; // 편집 시작 전 보드 스냅샷(취소용)
+
+function buildEditPalette() {
+  const choDiv = document.getElementById('editPaletteCho');
+  const hanDiv = document.getElementById('editPaletteHan');
+  if (!choDiv || !hanDiv || choDiv.childElementCount) return; // 이미 만들어졌으면 재생성하지 않음
+  EDIT_TYPES.forEach(type => {
+    const bCho = document.createElement('button');
+    bCho.type = 'button';
+    bCho.className = 'btn secondary edit-tool-btn';
+    bCho.style.background = 'var(--cho-green)';
+    bCho.style.borderColor = 'var(--cho-green-dark)';
+    bCho.textContent = pieceName(type);
+    bCho.addEventListener('click', () => selectEditTool('cho', type, bCho));
+    choDiv.appendChild(bCho);
+
+    const bHan = document.createElement('button');
+    bHan.type = 'button';
+    bHan.className = 'btn secondary edit-tool-btn';
+    bHan.style.background = 'var(--han-red)';
+    bHan.style.borderColor = 'var(--han-red-dark)';
+    bHan.textContent = pieceName(type);
+    bHan.addEventListener('click', () => selectEditTool('han', type, bHan));
+    hanDiv.appendChild(bHan);
+  });
+}
+
+function clearEditToolHighlight() {
+  document.querySelectorAll('.edit-tool-btn').forEach(b => b.classList.remove('edit-tool-active'));
+}
+
+function selectEditTool(side, type, btnEl) {
+  const isSame = editTool && editTool !== 'erase' && editTool.side === side && editTool.type === type;
+  clearEditToolHighlight();
+  if (isSame) { editTool = null; return; }
+  editTool = { side, type };
+  btnEl.classList.add('edit-tool-active');
+}
+
+function enterEditMode() {
+  if (!state || state.aiThinking) return;
+  hideThinkOverlay();
+  document.getElementById('modalOverlay').hidden = true;
+  editOrigBoard = cloneBoard(state.board);
+  editTool = null;
+  clearEditToolHighlight();
+  state.selected = null;
+  state.legalForSelected = [];
+  state.editMode = true;
+
+  const nextTurnInput = document.querySelector(`input[name="editNextTurn"][value="${state.turn}"]`);
+  if (nextTurnInput) nextTurnInput.checked = true;
+  document.getElementById('editWarnText').textContent = '';
+  document.getElementById('editPanel').hidden = false;
+  document.getElementById('editBoardBtn').textContent = '배치 편집 중...';
+  document.getElementById('editBoardBtn').disabled = true;
+  renderPieces();
+}
+
+function onEditSquareClick(e) {
+  if (justDragged) return;
+  const target = e.target.closest('[data-r]');
+  if (!target || !editTool) return;
+  const r = parseInt(target.dataset.r, 10), c = parseInt(target.dataset.c, 10);
+  state.board[r][c] = (editTool === 'erase') ? null : { type: editTool.type, side: editTool.side };
+  renderPieces();
+}
+
+function exitEditModeUI() {
+  state.editMode = false;
+  editTool = null;
+  clearEditToolHighlight();
+  document.getElementById('editPanel').hidden = true;
+  document.getElementById('editBoardBtn').textContent = '임의 배치';
+  document.getElementById('editBoardBtn').disabled = false;
+}
+
+function cancelEdit() {
+  if (!state || !state.editMode) return;
+  state.board = editOrigBoard;
+  exitEditModeUI();
+  renderPieces();
+}
+
+function applyEdit() {
+  if (!state || !state.editMode) return;
+  const nextTurn = document.querySelector('input[name="editNextTurn"]:checked').value;
+
+  const choGenerals = state.board.flat().filter(p => p && p.side === 'cho' && p.type === 'G').length;
+  const hanGenerals = state.board.flat().filter(p => p && p.side === 'han' && p.type === 'G').length;
+  const warnEl = document.getElementById('editWarnText');
+  if (choGenerals !== 1 || hanGenerals !== 1) {
+    warnEl.textContent = '참고: 궁(장)이 양쪽에 정확히 하나씩 있지 않으면 장군/외통 판정이 정확하지 않을 수 있어요. 그래도 이대로 적용합니다.';
+  } else {
+    warnEl.textContent = '';
+  }
+
+  state.turn = nextTurn;
+  state.selected = null;
+  state.legalForSelected = [];
+  state.legalForHuman = genLegalMoves(state.board, state.humanSide);
+  state.gameOver = false;
+  state.history.push({ board: cloneBoard(state.board), turn: state.turn });
+  appendEditDivider();
+
+  exitEditModeUI();
+  renderPieces();
+  updateTurnBadge();
+  refineWinProbWithSearch();
+
+  if (checkGameEnd()) return;
+  if (state.turn !== state.humanSide) aiTurn();
+}
+
+function appendEditDivider() {
+  const log = document.getElementById('moveLog');
+  if (!log) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'margin:6px 0; padding-top:6px; border-top:1px dashed #6b4726; color:#8a7350; font-size:11px;';
+  div.textContent = `── 임의 배치 적용 (다음 차례: ${sideName(state.turn)}) ──`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+/* ---------------------------------------------------------
+   임의 배치 중 기물 드래그(포인터 이벤트로 마우스/터치 통합 처리)
+   - 기물이 있는 칸에서 포인터를 누르고 일정 거리 이상 움직이면
+     "드래그"로 판단해 고스트(반투명 복제본)를 포인터를 따라 옮긴다.
+   - 놓는 지점이 판 안이면 그 칸으로 기물을 옮기고(있던 기물은 덮어씀),
+     판 밖이면 원래 자리에서 그냥 사라진다(삭제).
+   - 거의 움직이지 않았으면(=탭/클릭) 드래그로 취급하지 않고, 기존
+     클릭 배치 로직(onEditSquareClick)이 그대로 처리하도록 둔다.
+   --------------------------------------------------------- */
+let dragState = null;
+let justDragged = false;
+
+function svgPointFromEvent(svg, e) {
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function dropPointToLogicalCell(x, y) {
+  const dispC = Math.round((x - MARGIN) / DX);
+  const dispR = Math.round((y - MARGIN) / DY);
+  if (dispC < 0 || dispC > COLS - 1 || dispR < 0 || dispR > ROWS - 1) return null;
+  const cx = MARGIN + dispC * DX, cy = MARGIN + dispR * DY;
+  if (Math.hypot(x - cx, y - cy) > Math.min(DX, DY) * 0.65) return null; // 칸 중심에서 너무 멀면 "판 밖"으로 간주
+  return isFlipped() ? { r: ROWS - 1 - dispR, c: COLS - 1 - dispC } : { r: dispR, c: dispC };
+}
+
+function attachEditDragHandlers(svg) {
+  svg.addEventListener('pointerdown', (e) => {
+    if (!state || !state.editMode) return;
+    const target = e.target.closest('[data-r]');
+    if (!target) return;
+    const r = parseInt(target.dataset.r, 10), c = parseInt(target.dataset.c, 10);
+    const piece = state.board[r][c];
+    if (!piece) return; // 빈 칸은 드래그 시작 없음 — 기존 클릭 배치가 처리
+
+    const startPt = svgPointFromEvent(svg, e);
+    dragState = { fromR: r, fromC: c, piece, moved: false, startPt, lastPt: startPt, pointerId: e.pointerId };
+
+    const ghost = buildPieceGroup(piece);
+    ghost.style.pointerEvents = 'none';
+    ghost.style.opacity = '0.85';
+    ghost.setAttribute('transform', `translate(${startPt.x},${startPt.y})`);
+    svg.appendChild(ghost); // 맨 마지막에 붙여 다른 레이어보다 위에 보이게
+    dragState.ghostEl = ghost;
+
+    svg.setPointerCapture(e.pointerId);
+  });
+
+  svg.addEventListener('pointermove', (e) => {
+    if (!dragState) return;
+    const p = svgPointFromEvent(svg, e);
+    dragState.lastPt = p;
+    if (!dragState.moved && Math.hypot(p.x - dragState.startPt.x, p.y - dragState.startPt.y) > 6) {
+      dragState.moved = true;
+    }
+    if (dragState.moved) dragState.ghostEl.setAttribute('transform', `translate(${p.x},${p.y})`);
+  });
+
+  function finishDrag(e) {
+    if (!dragState) return;
+    const ds = dragState;
+    dragState = null;
+    try { svg.releasePointerCapture(ds.pointerId); } catch (err) {}
+    if (ds.ghostEl) ds.ghostEl.remove();
+
+    if (!ds.moved) return; // 그냥 탭/클릭이면 뒤이어 오는 click 이벤트가 배치 로직을 처리
+
+    justDragged = true;
+    setTimeout(() => { justDragged = false; }, 0);
+
+    const dropCell = dropPointToLogicalCell(ds.lastPt.x, ds.lastPt.y);
+    state.board[ds.fromR][ds.fromC] = null;
+    if (dropCell) state.board[dropCell.r][dropCell.c] = ds.piece; // 판 밖이면 그대로 삭제
+    renderPieces();
+  }
+
+  svg.addEventListener('pointerup', finishDrag);
+  svg.addEventListener('pointercancel', finishDrag);
+}
+
+/* =========================================================
+   4. 설정 화면 / 초기화
+
    ========================================================= */
 function getArrangement(side) {
   const left = document.querySelector(`input[name="${side}Left"]:checked`).value;
@@ -1883,9 +2817,9 @@ document.getElementById('startBtn').addEventListener('click', () => {
   const choArr = getArrangement('cho');
   const hanArr = getArrangement('han');
   const difficulty = document.getElementById('difficultySelect').value;
+  const humanSide = document.querySelector('input[name="humanSideChoice"]:checked').value;
 
-  state = newGameState(choArr, hanArr, difficulty, 'cho');
-  ssSetupGame(state.board);
+  state = newGameState(choArr, hanArr, difficulty, humanSide);
 
   document.getElementById('setupScreen').hidden = true;
   document.getElementById('gameScreen').hidden = false;
@@ -1893,18 +2827,68 @@ document.getElementById('startBtn').addEventListener('click', () => {
   const svg = document.getElementById('boardSvg');
   buildBoardStatic(svg);
   svg.addEventListener('click', onBoardClick);
+  attachEditDragHandlers(svg);
+  buildEditPalette();
   renderPieces();
   updateTurnBadge();
-  updateEngineLabel();
+  initAiWorker(); // Worker 초기화 (게임 시작 시)
+  refineWinProbWithSearch();
+  if (state.turn !== state.humanSide) aiTurn(); // AI가 선공(한)을 골랐을 경우 바로 첫 수 진행
 });
 
-// 페이지 로드 시 미리 백그라운드에서 로딩을 시도해 둔다 (실패해도 게임엔 영향 없음).
-initSsanatos();
+function updateRoleLabels() {
+  const checked = document.querySelector('input[name="humanSideChoice"]:checked');
+  const val = checked ? checked.value : 'cho';
+  document.getElementById('choRoleLabel').textContent = val === 'cho' ? '당신' : 'AI';
+  document.getElementById('hanRoleLabel').textContent = val === 'han' ? '당신' : 'AI';
+}
+document.querySelectorAll('input[name="humanSideChoice"]').forEach(el => el.addEventListener('change', updateRoleLabels));
+updateRoleLabels();
+
+// Fairy-Stockfish는 CDN에서 백그라운드로 시도 (성공하면 Worker 실패 시 2순위 폴백)
 initStockfish();
+
+document.getElementById('thinkViewBtn').addEventListener('click', async () => {
+  if (!state || state.gameOver || state.aiThinking || state.editMode) return;
+  const btn = document.getElementById('thinkViewBtn');
+  if (thinkVisible) { hideThinkOverlay(); return; }
+
+  btn.disabled = true;
+  btn.textContent = '분석 중...';
+  const result = await computeThinkLines();
+
+  if (!state || state.aiThinking) {
+    // 분석하는 동안 실제 AI 차례가 시작되는 등 상태가 바뀌면 결과를 버린다.
+    btn.disabled = false;
+    btn.textContent = 'AI 생각 보기 (5수)';
+    return;
+  }
+  btn.disabled = false;
+  if (!result) {
+    btn.textContent = 'AI 생각 보기 (5수)';
+    document.getElementById('thinkPanelText').textContent = '분석할 수 있는 수가 없습니다.';
+    return;
+  }
+  renderThinkOverlay(result);
+  renderThinkText(result);
+  thinkVisible = true;
+  btn.textContent = '생각 숨기기';
+});
 
 document.getElementById('undoBtn').addEventListener('click', undo);
 document.getElementById('newGameBtn').addEventListener('click', () => location.reload());
 document.getElementById('modalNewGameBtn').addEventListener('click', () => location.reload());
+document.getElementById('editBoardBtn').addEventListener('click', enterEditMode);
+document.getElementById('editEraseBtn').addEventListener('click', () => {
+  const btn = document.getElementById('editEraseBtn');
+  const isSame = editTool === 'erase';
+  clearEditToolHighlight();
+  if (isSame) { editTool = null; return; }
+  editTool = 'erase';
+  btn.classList.add('edit-tool-active');
+});
+document.getElementById('editApplyBtn').addEventListener('click', applyEdit);
+document.getElementById('editCancelBtn').addEventListener('click', cancelEdit);
 </script>
 </body>
 </html>
