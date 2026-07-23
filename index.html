@@ -140,6 +140,23 @@
   .edit-tool-active{outline:2px solid var(--ink-gold); box-shadow:0 0 0 2px rgba(200,162,74,0.35);}
   #startBtnWrap{text-align:center; margin-top:22px;}
 
+  /* ---------- ad bar (Coupang Partners) ---------- */
+  #ad-bar{
+    flex:0 0 auto;
+    display:flex; flex-direction:column; align-items:center;
+    gap:4px;
+    padding:2px 0 10px 0;
+    position:relative; z-index:5;
+  }
+  #ad-bar .ad-disclosure{
+    font-size:10px; color:var(--text-dim); letter-spacing:0.01em; text-align:center;
+    padding:0 14px;
+  }
+  #ad-bar .ad-slot{
+    min-height:50px; min-width:240px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
   /* ---------- 게임 화면 ---------- */
   #gameScreen{
     display:flex;
@@ -348,6 +365,15 @@
   </div>
 </div>
 
+<div id="ad-bar">
+  <div class="ad-disclosure">이 앱은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</div>
+  <div class="ad-slot">
+    <script src="https://ads-partners.coupang.com/g.js"></script>
+    <script>
+        new PartnersCoupang.G({"id":1000572,"trackingCode":"AF0795367","subId":null,"template":"carousel","width":"240","height":"50"});
+    </script>
+  </div>
+</div>
 <!-- 아래 슬롯은 비어 있어도 정상 동작합니다.
      ssanatos-engine-src/merge.py로 병합하면 이 자리에 엔진 코드가 삽입되어
      외부 파일 없이 완전한 단일 HTML 파일이 됩니다. -->
